@@ -1,12 +1,12 @@
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import BaseCoordinateFrame, frame_transform_graph, AffineTransform, ICRS, SkyCoord, \
-    CartesianRepresentation, Angle, SphericalRepresentation
+    CartesianRepresentation, Angle, SphericalRepresentation, BarycentricMeanEcliptic
 from astropy.coordinates.attributes import CoordinateAttribute, TimeAttribute, QuantityAttribute, Attribute
 from astropy.time import Time
 from .meta import Precession
 
-__all__ = ['PlanetocentricFrame']
+__all__ = ['PlanetocentricFrame', 'Kaasalainen']
 
 
 class PlanetocentricFrame(BaseCoordinateFrame):
@@ -33,7 +33,7 @@ class PlanetocentricFrame(BaseCoordinateFrame):
         Rate at which the declination of the pole changes, in deg/century
 
     extra_delta : `Precession`
-        A Precession object that accounts for the precession of the pole in right ascension
+        A Precession object that accounts for the precession of the pole in declination
 
     prime_angle : `float`, `astropy.units.Quantity`
         The angle of the prime meridian at reference epoch, in deg
@@ -42,7 +42,7 @@ class PlanetocentricFrame(BaseCoordinateFrame):
         The rotation velocity of the body, in deg/day
 
     extra_w : `Precession`
-        A Precession object that accounts for the precession of the pole in right ascension
+        A Precession object that accounts for the precession of the prime meridian
 
     right_hand : `bool`
         States if the orientation of the longitude of the body is counterclockwise.
@@ -142,12 +142,153 @@ class PlanetocentricFrame(BaseCoordinateFrame):
     def __str__(self):
         string = ["PlanetocentricFrame:",
                   "    Epoch: {} {}".format(self.epoch.__str__(), self.epoch.scale),
-                  "    alpha_pole = {} {:+f}*T {}".format(self.pole.ra.value, self.alphap.value*100,
+                  "    alpha_pole = {} {:+f}*T {}".format(self.pole.ra.value, self.alphap.value * 100,
                                                           ''.join(self.extra_alpha.__str__().split('\n'))),
-                  "    delta_pole = {} {:+f}*T {}".format(self.pole.dec.value, self.deltap.value*100,
+                  "    delta_pole = {} {:+f}*T {}".format(self.pole.dec.value, self.deltap.value * 100,
                                                           ''.join(self.extra_delta.__str__().split('\n'))),
                   "    W = {} {:+f}*d {}".format(self.prime_angle.value, self.rotation_velocity.value,
                                                  ''.join(self.extra_w.__str__().split('\n'))),
+                  "    Reference: {}".format(self.reference)]
+        return '\n'.join(string)
+
+
+class Kaasalainen(BaseCoordinateFrame):
+    """
+    https://docs.astropy.org/en/stable/coordinates/frames.html
+
+    Parameters
+    ----------
+    epoch : `str`, `astropy.time.Time`
+        Reference epoch of the given parameters, in TDB.
+
+    pole : `str`, `astropy.coordinates.SkyCoord`
+        Barycentric Mean Eclipctic coordinates of the pole at reference epoch.
+        If string, it must be 'dd.ddd +dd.ddd' or 'dd dd dd.ddd +dd dd dd.ddd',
+        in degrees
+
+    lonp : `float`, `astropy.units.Quantity`
+        Rate at which the longitude of the pole changes, in deg/century
+
+    extra_lon: `Precession`
+        A Precession object that accounts for the precession of the pole in longitude
+
+    latp : `float`, `astropy.units.Quantity`
+        Rate at which the latitude of the pole changes, in deg/century
+
+    extra_lat : `Precession`
+        A Precession object that accounts for the precession of the pole in latitude
+
+    phi : `float`, `astropy.units.Quantity`
+        The angle of the prime meridian at reference epoch, in deg
+
+    rotation_velocity : `float`, `astropy.units.Quantity`
+        The rotation velocity of the body, in deg/day
+
+    extra_phi : `Precession`
+        A Precession object that accounts for the precession of the prime meridian
+
+    right_hand : `bool`
+        States if the orientation of the longitude of the body is counterclockwise.
+        In the Solar System, Earth, the Moon and the Sun have longitude counterclockwise.
+        The asteroids, planets and satellites must define to have an increasing longitude
+        from the Earth's point-of-view.
+
+    reference : `str`
+        Includes a reference or citation for the given parameters
+
+    """
+    # Specify how coordinate values are represented when outputted
+    default_representation = SphericalRepresentation
+
+    epoch = TimeAttribute(default='J2000')
+    pole = CoordinateAttribute(default=SkyCoord("00 90", unit=('deg', 'deg')), frame=BarycentricMeanEcliptic)
+    lonp = QuantityAttribute(default=0 * u.deg / u.year)
+    extra_lon = Attribute(default=Precession())
+    latp = QuantityAttribute(default=0 * u.deg / u.year)
+    extra_lat = Attribute(default=Precession())
+    phi = QuantityAttribute(default=0 * u.deg)
+    rotation_velocity = QuantityAttribute(default=0 * u.deg / u.day)
+    extra_phi = Attribute(default=Precession())
+    right_hand = Attribute(default=False)
+    reference = Attribute(default="User")
+
+    def __init__(self, *args, **kwargs):
+        pole = kwargs.get('pole')
+        if isinstance(pole, str):
+            kwargs['pole'] = SkyCoord(pole, unit=(u.deg, u.deg), frame=BarycentricMeanEcliptic)
+        kwargs['latp'] = u.Quantity(kwargs.get('latp', 0), unit=u.deg / u.year) / 100
+        kwargs['lonp'] = u.Quantity(kwargs.get('lonp', 0), unit=u.deg / u.year) / 100
+        kwargs['phi'] = Angle(u.Quantity(kwargs.get('phi', 0), unit=u.deg)).wrap_at(360 * u.deg)
+        kwargs['rotation_velocity'] = u.Quantity(kwargs.get('rotation_velocity', 0), unit=u.deg / u.day)
+        kwargs['extra_lon'] = Precession(kwargs.get('extra_lon', 0), func='sin', multiplier='T')
+        kwargs['extra_lat'] = Precession(kwargs.get('extra_lat', 0), func='cos', multiplier='T')
+        kwargs['extra_phi'] = Precession(kwargs.get('extra_phi', 0), func='sin', multiplier='T')
+        super().__init__(*args, **kwargs)
+
+    def orientation_at(self, epoch):
+        """
+
+        Parameters
+        ----------
+        epoch : `str`, `astropy.time.Time`
+            Time to which rotate the frame.
+
+        Returns
+        -------
+        pole : `astropy.coordinates.SkyCoord`
+            The pole of the object at given epoch.
+
+        phi : `astropy.coordinates.Angle`
+            The location of the prime meridian relative to the ascending node of the body's equator
+            at given epoch.
+
+        """
+        dt = Time(epoch) - self.epoch
+        W = self.phi + self.rotation_velocity * dt + self.extra_phi.compute_at(dt)
+        W = Angle(W).wrap_at(360 * u.deg)
+        new_lon = self.pole.lon + self.lonp * dt + self.extra_lon.compute_at(dt)
+        new_lat = self.pole.lat + self.latp * dt + self.extra_lat.compute_at(dt)
+        pole = SkyCoord(new_lon, new_lat, frame=BarycentricMeanEcliptic)
+        return pole, W
+
+    def frame_at(self, epoch):
+        """
+
+        Parameters
+        ----------
+        epoch : `str`, `astropy.time.Time`
+            Time to which rotate the frame.
+
+        Returns
+        -------
+        frame : `PlanetocentricFrame`
+            A new PlanetocentricFrame with the parameters at given epoch.
+
+        """
+        dt = Time(epoch) - self.epoch
+        pole, phi = self.orientation_at(epoch=epoch)
+        lon = pole.lon - self.extra_lon.compute_at(dt)
+        lat = pole.lat - self.extra_lat.compute_at(dt)
+        new_pole = SkyCoord(lon, lat, frame=BarycentricMeanEcliptic)
+        phi = Angle(phi - self.extra_phi.compute_at(dt)).wrap_at(360 * u.deg)
+        extra_lon = self.extra_lon.params_at(dt)
+        extra_lat = self.extra_lat.params_at(dt)
+        extra_phi = self.extra_phi.params_at(dt)
+        new_frame = Kaasalainen(epoch=epoch, pole=new_pole, lonp=self.lonp, latp=self.latp, phi=phi,
+                                rotation_velocity=self.rotation_velocity, right_hand=self.right_hand,
+                                reference=self.reference, extra_phi=extra_phi, extra_lon=extra_lon,
+                                extra_lat=extra_lat)
+        return new_frame
+
+    def __str__(self):
+        string = ["Kaasalainen:",
+                  "    Epoch: {}".format(self.epoch.__str__()),
+                  "    lon_pole = {} {:+f}*T {}".format(self.pole.lon.value, self.lonp.value*100,
+                                                          ''.join(self.extra_lon.__str__().split('\n'))),
+                  "    lat_pole = {} {:+f}*T {}".format(self.pole.lat.value, self.latp.value*100,
+                                                          ''.join(self.extra_lat.__str__().split('\n'))),
+                  "    Phi = {} {:+f}*T {}".format(self.phi.value, self.rotation_velocity.value,
+                                                 ''.join(self.extra_phi.__str__().split('\n'))),
                   "    Reference: {}".format(self.reference)]
         return '\n'.join(string)
 
@@ -189,6 +330,43 @@ def get_matrix_vectors(planetocentric_frame, inverse=False):
     return A, offset
 
 
+def get_matrix_vectors2(planetocentric_frame, inverse=False):
+    """
+
+    Parameters
+    ----------
+    planetocentric_frame : `PlanetocentricFrame2`
+        The PlanetocentricFrame object to convert from the ICRS
+
+    inverse : `bool`
+        If the parameters are to be calculated to the ICRS
+
+    Returns
+    -------
+    : `numpy.array`
+        A matrix to convert between orientations
+
+    : `CartesianRepresentation`
+        A vector to convert between origins
+
+    """
+    from astropy.coordinates.matrix_utilities import rotation_matrix, matrix_transpose
+    offset = CartesianRepresentation(0 * u.km, 0 * u.km, 0 * u.km)
+    pole, phi = planetocentric_frame.orientation_at(planetocentric_frame.epoch)
+    if planetocentric_frame.right_hand:
+        m1 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    else:
+        m1 = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    rz2 = rotation_matrix(phi, axis='z')
+    ry = rotation_matrix(90 * u.deg - pole.lat, axis='y')
+    rz1 = rotation_matrix(pole.lon, axis='z')
+
+    A = m1 @ rz2 @ ry @ rz1
+    if inverse:
+        A = matrix_transpose(A)
+    return A, offset
+
+
 @frame_transform_graph.transform(AffineTransform, ICRS, PlanetocentricFrame)
 def icrs_to_planetocentric(icrs_coord, planetocentric_frame):
     return get_matrix_vectors(planetocentric_frame)
@@ -197,3 +375,13 @@ def icrs_to_planetocentric(icrs_coord, planetocentric_frame):
 @frame_transform_graph.transform(AffineTransform, PlanetocentricFrame, ICRS)
 def planetocentric_to_icrs(planetocentric_coord, icrs_frame):
     return get_matrix_vectors(planetocentric_coord, inverse=True)
+
+
+@frame_transform_graph.transform(AffineTransform, BarycentricMeanEcliptic, Kaasalainen)
+def bari_to_kaasa(bari_coord, planetocentric_frame):
+    return get_matrix_vectors2(planetocentric_frame)
+
+
+@frame_transform_graph.transform(AffineTransform, Kaasalainen, BarycentricMeanEcliptic)
+def kaasa_to_bari(planetocentric_coord, bari_frame):
+    return get_matrix_vectors2(planetocentric_coord, inverse=True)

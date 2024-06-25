@@ -297,9 +297,9 @@ class BaseBody():
     @pole.setter
     def pole(self, value):
         if value is None:
-            self._pole = SkyCoord(np.nan, np.nan, unit=(u.deg, u.deg))
+            self._pole = SkyCoord(np.nan, np.nan, unit=(u.deg, u.deg)).icrs
         else:
-            self._pole = SkyCoord(value, unit=(u.hourangle, u.deg))
+            self._pole = SkyCoord(value, unit=(u.hourangle, u.deg)).icrs
         self._pole.ra.uncertainty = Longitude(0*u.hourangle)
         self._pole.dec.uncertainty = Latitude(0*u.deg)
         self._pole.reference = "User"
@@ -394,8 +394,8 @@ class BaseBody():
 
     @frame.setter
     def frame(self, value):
-        from .frame import PlanetocentricFrame
-        if not isinstance(value, PlanetocentricFrame):
+        from .frame import PlanetocentricFrame, Kaasalainen
+        if not isinstance(value, (PlanetocentricFrame, Kaasalainen)):
             logging.error("Body frame must be a Planetocentric frame. Given: {}, {}".format(type(value), value))
             raise ValueError('frame attribute must be a PlanetocentricFrame object.')
         self._frame = value

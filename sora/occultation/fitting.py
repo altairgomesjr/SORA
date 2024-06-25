@@ -639,7 +639,7 @@ def fit_shape(occ, center_f=0, dcenter_f=0, center_g=0, dcenter_g=0, scale=1, ds
 
     """
     orientation = occ.body.get_orientation(time=occ.tca)
-    limb = occ.body.shape.get_limb(**orientation)
+    limb = occ.body.shape.get_limb(sub_observer=orientation['sub_observer'], pole_position_angle=orientation['pole_position_angle'])
     chord_names, fg, error = occ.chords.get_limb_points()
     chisquare = fit_to_limb(limb, fg, error, center_f=center_f, dcenter_f=dcenter_f, center_g=center_g, dcenter_g=dcenter_g,
                             scale=scale, dscale=dscale, loop=loop, model_error=model_error)
