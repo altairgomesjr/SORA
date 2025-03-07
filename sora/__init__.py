@@ -12,7 +12,7 @@ import logging
 __all__ = ['Body', 'Config', 'EphemKernel', 'EphemPlanete', 'EphemJPL', 'EphemHorizons',
            'LightCurve', 'Observer', 'Spacecraft', 'Star', 'Occultation']
 
-__version__ = '0.3.2'
+from .version import version as __version__
 
 config = Config()
 configure_logger()

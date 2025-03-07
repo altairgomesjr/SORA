@@ -1,0 +1,14 @@
+numpy>=2.2
+pyerfa>=2.0
+astropy>=7.0
+astroquery>=0.4.9
+spiceypy>=6.0.0
+matplotlib>=3.10.0
+scipy>=1.15
+requests>=2.32.3
+tqdm>=4.66
+shapely>=2.0.7
+cartopy>=0.24
+pandas>=2.2.3
+pyyaml>=6.0.2
+platformdirs>=4.3.8
