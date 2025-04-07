@@ -44,6 +44,9 @@ class PlanetocentricFrame(BaseCoordinateFrame):
     extra_w : `Precession`
         A Precession object that accounts for the precession of the prime meridian
 
+    yorp : `float`, `astropy.units.Quantity`
+        Linear change in the rotation rate dω/dt caused by the Yarkovsky-O'Keefe-Radzievskii-Paddack effect (rad/day2).
+
     right_hand : `bool`
         States if the orientation of the longitude of the body is counterclockwise.
         In the Solar System, Earth, the Moon and the Sun have longitude counterclockwise.
@@ -66,6 +69,7 @@ class PlanetocentricFrame(BaseCoordinateFrame):
     prime_angle = QuantityAttribute(default=0 * u.deg)
     rotation_velocity = QuantityAttribute(default=0 * u.deg / u.day)
     extra_w = Attribute(default=Precession())
+    yorp = QuantityAttribute(default=0 * u.rad / u.day ** 2)
     right_hand = Attribute(default=False)
     reference = Attribute(default="User")
 
@@ -77,6 +81,7 @@ class PlanetocentricFrame(BaseCoordinateFrame):
         kwargs['deltap'] = u.Quantity(kwargs.get('deltap', 0), unit=u.deg / u.year) / 100
         kwargs['prime_angle'] = Angle(u.Quantity(kwargs.get('prime_angle', 0), unit=u.deg)).wrap_at(360 * u.deg)
         kwargs['rotation_velocity'] = u.Quantity(kwargs.get('rotation_velocity', 0), unit=u.deg / u.day)
+        kwargs['yorp'] = u.Quantity(kwargs.get('yorp', 0), unit=u.rad / u.day ** 2)
         kwargs['extra_alpha'] = Precession(kwargs.get('extra_alpha', 0), func='sin', multiplier='T')
         kwargs['extra_delta'] = Precession(kwargs.get('extra_delta', 0), func='cos', multiplier='T')
         kwargs['extra_w'] = Precession(kwargs.get('extra_w', 0), func='sin', multiplier='T')
@@ -102,7 +107,8 @@ class PlanetocentricFrame(BaseCoordinateFrame):
 
         """
         dt = Time(epoch) - self.epoch
-        W = self.prime_angle + self.rotation_velocity * dt + self.extra_w.compute_at(dt)
+        W = self.prime_angle + self.rotation_velocity * dt + self.extra_w.compute_at(dt) + np.sign(dt.jd) * (
+                    self.yorp / 2) * dt.to(u.day) ** 2
         W = Angle(W).wrap_at(360 * u.deg)
         new_ra = self.pole.ra + self.alphap * dt + self.extra_alpha.compute_at(dt)
         new_dec = self.pole.dec + self.deltap * dt + self.extra_delta.compute_at(dt)
@@ -136,7 +142,7 @@ class PlanetocentricFrame(BaseCoordinateFrame):
         new_frame = PlanetocentricFrame(epoch=epoch, pole=new_pole, alphap=self.alphap, deltap=self.deltap, prime_angle=W,
                                         rotation_velocity=self.rotation_velocity, right_hand=self.right_hand,
                                         reference=self.reference, extra_w=extra_w, extra_alpha=extra_alpha,
-                                        extra_delta=extra_delta)
+                                        extra_delta=extra_delta, yorp=self.yorp)
         return new_frame
 
     def __str__(self):
@@ -146,8 +152,8 @@ class PlanetocentricFrame(BaseCoordinateFrame):
                                                           ''.join(self.extra_alpha.__str__().split('\n'))),
                   "    delta_pole = {} {:+f}*T {}".format(self.pole.dec.value, self.deltap.value * 100,
                                                           ''.join(self.extra_delta.__str__().split('\n'))),
-                  "    W = {} {:+f}*d {}".format(self.prime_angle.value, self.rotation_velocity.value,
-                                                 ''.join(self.extra_w.__str__().split('\n'))),
+                  "    W = {} {:+f}*d {} ({:+e}/2)*d^2".format(self.prime_angle.value, self.rotation_velocity.value,
+                                                 ''.join(self.extra_w.__str__().split('\n')), self.yorp.value),
                   "    Reference: {}".format(self.reference)]
         return '\n'.join(string)
 
@@ -187,6 +193,9 @@ class Kaasalainen(BaseCoordinateFrame):
     extra_phi : `Precession`
         A Precession object that accounts for the precession of the prime meridian
 
+    yorp : `float`, `astropy.units.Quantity`
+        Linear change in the rotation rate dω/dt caused by the Yarkovsky-O'Keefe-Radzievskii-Paddack effect (rad/day2).
+
     right_hand : `bool`
         States if the orientation of the longitude of the body is counterclockwise.
         In the Solar System, Earth, the Moon and the Sun have longitude counterclockwise.
@@ -209,6 +218,7 @@ class Kaasalainen(BaseCoordinateFrame):
     phi = QuantityAttribute(default=0 * u.deg)
     rotation_velocity = QuantityAttribute(default=0 * u.deg / u.day)
     extra_phi = Attribute(default=Precession())
+    yorp = QuantityAttribute(default=0 * u.deg / u.day ** 2)
     right_hand = Attribute(default=False)
     reference = Attribute(default="User")
 
@@ -220,6 +230,7 @@ class Kaasalainen(BaseCoordinateFrame):
         kwargs['lonp'] = u.Quantity(kwargs.get('lonp', 0), unit=u.deg / u.year) / 100
         kwargs['phi'] = Angle(u.Quantity(kwargs.get('phi', 0), unit=u.deg)).wrap_at(360 * u.deg)
         kwargs['rotation_velocity'] = u.Quantity(kwargs.get('rotation_velocity', 0), unit=u.deg / u.day)
+        kwargs['yorp'] = u.Quantity(kwargs.get('yorp', 0), unit=u.rad / u.day ** 2)
         kwargs['extra_lon'] = Precession(kwargs.get('extra_lon', 0), func='sin', multiplier='T')
         kwargs['extra_lat'] = Precession(kwargs.get('extra_lat', 0), func='cos', multiplier='T')
         kwargs['extra_phi'] = Precession(kwargs.get('extra_phi', 0), func='sin', multiplier='T')
@@ -244,7 +255,8 @@ class Kaasalainen(BaseCoordinateFrame):
 
         """
         dt = Time(epoch) - self.epoch
-        W = self.phi + self.rotation_velocity * dt + self.extra_phi.compute_at(dt)
+        W = self.phi + self.rotation_velocity * dt + self.extra_phi.compute_at(dt) + np.sign(dt.jd) * (self.yorp / 2) * dt.to(
+            u.day) ** 2
         W = Angle(W).wrap_at(360 * u.deg)
         new_lon = self.pole.lon + self.lonp * dt + self.extra_lon.compute_at(dt)
         new_lat = self.pole.lat + self.latp * dt + self.extra_lat.compute_at(dt)
@@ -277,18 +289,18 @@ class Kaasalainen(BaseCoordinateFrame):
         new_frame = Kaasalainen(epoch=epoch, pole=new_pole, lonp=self.lonp, latp=self.latp, phi=phi,
                                 rotation_velocity=self.rotation_velocity, right_hand=self.right_hand,
                                 reference=self.reference, extra_phi=extra_phi, extra_lon=extra_lon,
-                                extra_lat=extra_lat)
+                                extra_lat=extra_lat, yorp=self.yorp)
         return new_frame
 
     def __str__(self):
         string = ["Kaasalainen:",
                   "    Epoch: {}".format(self.epoch.__str__()),
-                  "    lon_pole = {} {:+f}*T {}".format(self.pole.lon.value, self.lonp.value*100,
+                  "    lon_pole = {} {:+f}*T {}".format(self.pole.lon.value, self.lonp.value * 100,
                                                           ''.join(self.extra_lon.__str__().split('\n'))),
-                  "    lat_pole = {} {:+f}*T {}".format(self.pole.lat.value, self.latp.value*100,
+                  "    lat_pole = {} {:+f}*T {}".format(self.pole.lat.value, self.latp.value * 100,
                                                           ''.join(self.extra_lat.__str__().split('\n'))),
-                  "    Phi = {} {:+f}*T {}".format(self.phi.value, self.rotation_velocity.value,
-                                                 ''.join(self.extra_phi.__str__().split('\n'))),
+                  "    Phi = {} {:+f}*d {} ({:+e}/2)*d^2".format(self.phi.value, self.rotation_velocity.value,
+                                                             ''.join(self.extra_phi.__str__().split('\n')), self.yorp.value),
                   "    Reference: {}".format(self.reference)]
         return '\n'.join(string)
 
