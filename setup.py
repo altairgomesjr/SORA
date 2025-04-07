@@ -31,6 +31,7 @@ setup(
         'tqdm>=4.66',
         'shapely>=2.0.7',
         'cartopy>=0.24',
+        'pandas>=2.2',
     ],
     python_requires=">=3.11, <4",
     classifiers=[
