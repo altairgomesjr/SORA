@@ -43,6 +43,13 @@ class Shape3D(BaseShape):
             self.texture = texture
         self._right_hand = right_hand
 
+    @classmethod
+    def from_damit(cls, model_id):
+        from sora.body.damit import DamitDB
+        damit_db = DamitDB()
+        damit_db.get_model(model_id)
+        return cls(f'shape_{model_id}.obj')
+
     @property
     def faces(self):
         return self._faces

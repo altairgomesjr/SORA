@@ -236,6 +236,13 @@ class Kaasalainen(BaseCoordinateFrame):
         kwargs['extra_phi'] = Precession(kwargs.get('extra_phi', 0), func='sin', multiplier='T')
         super().__init__(*args, **kwargs)
 
+    @classmethod
+    def from_damit(cls, model_id):
+        from sora.body.damit import DamitDB
+        damit_db = DamitDB()
+        pole, period, epoch, phi0, yorp = damit_db.get_spin(model_id)
+        return cls(pole=pole, phi=phi0, rotation_velocity=360*u.deg/period, epoch=epoch, reference='DAMIT', yorp=yorp)
+
     def orientation_at(self, epoch):
         """
 
