@@ -572,7 +572,7 @@ class Star(MetaStar):
                     self.pmra.value, self.errors['pmra'].value, self.pmdec.value, self.errors['pmdec'].value, text_cgaudin,
                     self.parallax.value, self.errors['parallax'].value, self.rad_vel.value, self.errors['rad_vel'].value))
         if hasattr(self, 'offset'):
-            out += 'Offset Apllied: d_alpha_cos_dec = {}, d_dec = {}\n'.format(
+            out += 'Offset Applied: d_alpha_cos_dec = {}, d_dec = {}\n'.format(
                 self.offset.d_lon_coslat, self.offset.d_lat)
         out += 'Magnitudes:'
         mag_out = [' {}: {:6.3f}'.format(mag, self.mag[mag]) for mag in self.mag]

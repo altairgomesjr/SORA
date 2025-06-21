@@ -7,7 +7,6 @@ import numpy as np
 from astropy.coordinates import SkyCoord, get_body
 from astropy.table import Table, Row, Column
 from astropy.time import Time
-from astropy.utils.exceptions import AstropyWarning
 
 from sora.config import input_tests
 

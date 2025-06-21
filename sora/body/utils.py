@@ -16,7 +16,7 @@ def search_sbdb(name):
     ----------
     name : `str`
         The name of the object for the search. It can be the attributed `spkid`
-        or `designation number`. The name is case insensitive.
+        or `designation number`. The name is case-insensitive.
 
     Returns
     -------

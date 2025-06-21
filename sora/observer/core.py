@@ -30,15 +30,15 @@ class Observer:
     lon : `str`, `float`
         The Longitude of the site in degrees.
         Positive to East. Range (0 to 360) or (-180 to +180).
-        User can provide in degrees (`float`) or hexadecimal (`string`).
+        User can provide in degrees (`float`) or sexagesimal (`string`).
 
     lat : `str`, `float`
         The Latitude of the site in degrees.
         Positive North. Range (+90 to -90).
-        User can provide in degrees (float) or hexadecimal (string).
+        User can provide in degrees (float) or sexagesimal (string).
 
     height : `int`, `float`
-        The height of the site in meters above see level.
+        The height of the site in meters above sea level.
 
     ephem : `str`, `list`
         The ephemeris used to locate the observer on space.
