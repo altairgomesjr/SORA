@@ -1,4 +1,4 @@
-import warnings
+import logging
 import numpy as np
 
 __all__ = ['occ_detect']
@@ -96,10 +96,10 @@ def occ_detect(flux, dflux, time, cycle, maximum_duration=None, dur_step=None, s
     # duration of the light curve
     time_span = time[-1] - time[0]
     if maximum_duration and (maximum_duration > time_span):
-        warnings.warn('Occultation duration (maximum_duration={0}) '
-                      'exceeds the time series length ({1:0.5f}).'
-                      ' maximum_duration reset to the time series length.'
-                      .format(maximum_duration, time_span))
+        logging.warning('Occultation duration (maximum_duration={0}) '
+                        'exceeds the time series length ({1:0.5f}).'
+                        ' maximum_duration reset to the time series length.'
+                        .format(maximum_duration, time_span))
         maximum_duration = time_span
     if not maximum_duration:
         maximum_duration = time_span
@@ -108,9 +108,9 @@ def occ_detect(flux, dflux, time, cycle, maximum_duration=None, dur_step=None, s
         dur_step = cycle / 2
 
     if dur_step < cycle / 2:
-        warnings.warn('The given dur_step is oversampled by a factor '
-                      'of {0:0.1f} and has been reset to half a cycle '
-                      '({1:0.4f}).'.format((cycle / 2.) / dur_step, cycle / 2.))
+        logging.warning('The given dur_step is oversampled by a factor '
+                        'of {0:0.1f} and has been reset to half a cycle '
+                        '({1:0.4f}).'.format((cycle / 2.) / dur_step, cycle / 2.))
         dur_step = cycle / 2
 
     duration_grid = np.arange(dur_step, maximum_duration, dur_step)

@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -250,7 +250,7 @@ class EphemHorizons(BaseEphem):
     """
 
     def __init__(self, name, id_type='smallbody', spkid=None, **kwargs):
-
+        logging.debug(f"Initializing EphemHorizons. Parameters: name: {name}, id_type: {id_type}, spkid: {spkid}, kwargs: {kwargs}")
         super().__init__(name=name, spkid=spkid, **kwargs)
         self.id_type = id_type
         _ = self.get_position(Time.now())  # test if Horizons can proceed for this object
@@ -296,7 +296,7 @@ class EphemHorizons(BaseEphem):
 # remove this block for v1.0
 class EphemJPL(EphemHorizons):
     def __init__(self, name, id_type='smallbody', spkid=None, **kwargs):
-        warnings.warn('EphemJPL is deprecated and will be removed in v1.0. Please use EphemHorizons.')
+        logging.warning('EphemJPL is deprecated and will be removed in v1.0. Please use EphemHorizons.')
         super().__init__(name=name, id_type=id_type, spkid=spkid, **kwargs)
 
     __init__.__doc__ = EphemHorizons.__init__.__doc__
@@ -339,6 +339,7 @@ class EphemKernel(BaseEphem):
 
     @deprecated_alias(code='spkid')  # remove this line for v1.0
     def __init__(self, kernels, spkid, name=None, **kwargs):
+        logging.debug(f"Initializing EphemKernel with kernels: {kernels}, spkid: {spkid}, name: {name}, kwargs: {kwargs}")
         import spiceypy as spice
 
         super().__init__(name=name, spkid=spkid, **kwargs)

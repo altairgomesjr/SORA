@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -9,7 +9,6 @@ from sora.prediction import occ_params, PredictionTable
 from . import fitting
 
 __all__ = ['Occultation']
-warnings.simplefilter('always', UserWarning)
 
 
 class Occultation:
@@ -57,7 +56,7 @@ class Occultation:
 
     """
     def __init__(self, star, body=None, ephem=None, time=None, reference_center='geocenter'):
-
+        logging.debug(f"Occultation called: star: {star}, body: {body}, ephem: {ephem}, time: {time}, reference_center: {reference_center}")
         from sora.body import Body
         from sora.star import Star
         from .chordlist import ChordList
@@ -350,7 +349,7 @@ class Occultation:
             major_axis = self.fitted_params["equatorial_radius"][0]
             minor_axis = major_axis * (1 - self.fitted_params["oblateness"][0])
         else:
-            warnings.warn("A shape was not fitted. Using a circular shape provided in body centred at the origin.")
+            logging.warning("A shape was not fitted. Using a circular shape provided in body centred at the origin.")
             center = np.array([0, 0])
             major_axis = self.body.radius.value
             minor_axis = major_axis
@@ -432,8 +431,8 @@ class Occultation:
 
         tca_diff = np.absolute(time-self.tca)
         if tca_diff > 1*u.day:
-            warnings.warn('The difference between the given time and the closest approach instant is {:.1f} days. '
-                          'This position could not have a physical meaning.'.format(tca_diff.jd))
+            logging.warning('The difference between the given time and the closest approach instant is {:.1f} days. '
+                            'This position could not have a physical meaning.'.format(tca_diff.jd))
 
         if offset is not None:
             off_ra = offset[0]*u.Unit(offset[2])
@@ -449,7 +448,7 @@ class Occultation:
             off_dec = self.fitted_params['center_g'][0]*u.km
             dist = True
         else:
-            warnings.warn('No offset given or found. Using 0.0 instead.')
+            logging.warning('No offset given or found. Using 0.0 instead.')
             off_ra = 0.0*u.mas
             off_dec = 0.0*u.mas
             dist = False
@@ -468,7 +467,7 @@ class Occultation:
             e_off_dec = self.fitted_params['center_g'][1]*u.km
             e_dist = True
         else:
-            warnings.warn('No error given or found. Using 0.0 instead.')
+            logging.warning('No error given or found. Using 0.0 instead.')
             e_off_ra = 0.0*u.mas
             e_off_dec = 0.0*u.mas
             e_dist = False
@@ -493,8 +492,8 @@ class Occultation:
             ndra, nddec = calc_sun_dif_ld(body_coord=coord, star_coord=pos_star, time=time, observer=observer)
             off_ra -= ndra
             off_dec -= nddec
-            print('Differential Sun Light Deflection included (mas): DRA={:.3f}, DDEC={:.3f}'.format(
-                  ndra.to(u.mas).value, nddec.to(u.mas).value))
+            logging.info('Differential Sun Light Deflection included (mas): DRA={:.3f}, DDEC={:.3f}'.format(
+                         ndra.to(u.mas).value, nddec.to(u.mas).value))
 
         new_pos = SkyCoord(lon=off_ra, lat=off_dec, frame=coord_frame)
         new_pos = new_pos.icrs
@@ -579,7 +578,7 @@ class Occultation:
             circle_y = r_equa*(1.0-obla)*np.sin(theta)
             ellipse_y = -circle_x*np.sin((pos_ang-map_pa)*u.deg) + circle_y*np.cos((pos_ang-map_pa)*u.deg)
             kwargs['radius'] = ellipse_y.max()
-            print('Projected shadow radius = {:.1f} km'.format(kwargs['radius']))
+            logging.info('Projected shadow radius = {:.1f} km'.format(kwargs['radius']))
         kwargs['sites'] = kwargs.get('sites', self.get_map_sites())
         if 'offset' not in kwargs and hasattr(self, 'fitted_params'):
             off_ra = self.fitted_params['center_f'][0]*u.km

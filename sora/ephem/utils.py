@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import requests
 import pathlib
@@ -44,6 +44,7 @@ def getBSPfromJPL(identifier, initial_date, final_date, email=None, directory='.
     Exception
         For HTTP errors, missing SPK generation, or file writing issues.
     """
+    logging.debug(f'getBSPfromJPL(identifier={identifier}, initial_date={initial_date}, final_date={final_date})')
     ids = [identifier] if isinstance(identifier, str) else list(identifier)
     ids = [str(obj) for obj in ids]
 
@@ -98,7 +99,7 @@ def getBSPfromJPL(identifier, initial_date, final_date, email=None, directory='.
             fname   = f"{obj.replace(' ', '')}.bsp"
             
         status = f"Retrieving {obj:{max_len}} …"
-        print(status, end="\r")
+        logging.info(status)
 
         params = {
             "format":     "json",
@@ -143,12 +144,12 @@ def getBSPfromJPL(identifier, initial_date, final_date, email=None, directory='.
             print(" " * (len(status) + 5), end="\r")
 
     summary = f"Done — successes: {success}, failures: {len(failures)}"
-    print(summary.ljust(len(summary) + max_len))
+    logging.info(summary.ljust(len(summary) + max_len))
     if failures:
-        print("Failures detail:")
+        logging.error("Failures detail:")
         for line in failures:
-            print("  — ", line)
-        print("     Check if the identifier(s) is(are) correct.")
+            logging.error("  — ", line)
+        logging.error("     Check if the identifier(s) is(are) correct.")
 
 
 
@@ -306,7 +307,7 @@ def ephem_horizons(time, target, observer, id_type='smallbody', output='ephemeri
     if not time.isscalar and len(time) > 50:
         step = '10m'
         if time.max() - time.min() > 30 * u.day:
-            warnings.warn('Time interval may be too long. A timeout error may be raised.')
+            logging.warning('Time interval may be too long. A timeout error may be raised.')
         if time.max() - time.min() <= 1 * u.day:
             step = '1m'
         time2 = {'start': (time.min() - 10 * u.min).iso.split('.')[0],
@@ -317,8 +318,8 @@ def ephem_horizons(time, target, observer, id_type='smallbody', output='ephemeri
         time2 = time1
 
     if getattr(observer, 'ephem', None) not in ['horizons', None]:
-        warnings.warn('Ephemeris using kernel for the observer and Horizons for the target is under construction. '
-                      'We will use only Horizons.')
+        logging.warning('Ephemeris using kernel for the observer and Horizons for the target is under construction. '
+                        'We will use only Horizons.')
     id_type = None if id_type == 'majorbody' else id_type
     ob = Horizons(id=target, id_type=id_type, location=location, epochs=time2)
 

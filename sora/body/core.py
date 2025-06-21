@@ -1,3 +1,4 @@
+import logging
 import warnings
 
 import astropy.constants as const
@@ -106,6 +107,7 @@ class Body(BaseBody):
 
     def __init__(self, name, database='auto', **kwargs):
 
+        logging.debug(f"Body called: name: {name}, database: {database}, parameters: {kwargs}")
         allowed_kwargs = ["albedo", "H", "G", "diameter", "density", "GM", "rotation", "pole", "BV", "UB", "smass",
                           "orbit_class", "spkid", "tholen", "ephem", "frame", "shape"]
         input_tests.check_kwargs(kwargs, allowed_kwargs=allowed_kwargs)

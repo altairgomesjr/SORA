@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import numpy as np
 
@@ -99,7 +99,7 @@ class ChordList(List):
             chord.lightcurve.calc_magnitude_drop(mag_star=self._star.mag['G'], mag_obj=self._body.apparent_magnitude(self._time))
         except:
             chord.lightcurve.bottom_flux = 0.0
-            warnings.warn('Magnitude drop was not calculated. Using bottom flux as 0.0.')
+            logging.warning('Magnitude drop could not be calculated. Using bottom flux as 0.0.')
         chord._method = self._method
         return chord
 
@@ -235,7 +235,7 @@ class ChordList(List):
             except ValueError:
                 n += 1
         if n == len(self):
-            warnings.warn('Segment "{}" was not found on any chord'.format(segment))
+            logging.warning('Segment "{}" was not found on any chord. No plot made.'.format(segment))
 
     def summary(self):
         """Prints a table with the summary of the chords.

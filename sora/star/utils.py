@@ -1,3 +1,5 @@
+import logging
+
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
@@ -40,7 +42,7 @@ def search_star(**kwargs):
     input_tests.check_kwargs(kwargs, allowed_kwargs=['catalog', 'code', 'columns', 'coord', 'verbose', 'radius'])
     row_limit = 100
     if 'verbose' in kwargs and kwargs['verbose']:
-        print('\nDownloading star parameters from {}'.format(kwargs['catalog']))
+        logging.info('\nDownloading star parameters from {}'.format(kwargs['catalog']))
     vquery = Vizier(columns=kwargs['columns'], row_limit=row_limit, timeout=600)
     if 'code' in kwargs:
         catalogue = vquery.query_constraints(catalog=kwargs['catalog'], Source=kwargs['code'], cache=False)

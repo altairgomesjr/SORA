@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -26,7 +26,7 @@ class Chord:
     """
 
     def __init__(self, *, name, observer, lightcurve):
-
+        logging.debug(f"Chord called. name: {name}, observer: {observer}, lightcurve: {lightcurve}")
         from sora.lightcurve import LightCurve
         from sora.observer import Observer, Spacecraft
 
@@ -164,8 +164,8 @@ class Chord:
 
         tca_diff = np.array(np.absolute((time - occtime).jd), ndmin=1)
         if any(tca_diff > 0.5):
-            warnings.warn('The difference between a given time and the closest approach instant is {:.2f} days. '
-                          'This position could not have a physical meaning.'.format(tca_diff.max()))
+            logging.warning('The difference between a given time and the closest approach instant is {:.2f} days. '
+                            'This position could not have a physical meaning.'.format(tca_diff.max()))
 
         if self._method == 'geocenter' and not isinstance(self.observer, Spacecraft):
             ksio1, etao1 = self.observer.get_ksi_eta(time=time, star=coord)
@@ -271,14 +271,14 @@ class Chord:
         if step == 'exposure':
             exposure = True
             if segment == 'error':
-                warnings.warn('"exposure" not available for segment "error".')
+                logging.warning('"exposure" not available for segment "error".')
                 exposure = False
                 step = 1
             else:
                 try:
                     exptime = self.lightcurve.exptime
                 except AttributeError:
-                    warnings.warn('{} {} does not have "exptime". Setting continuous path'.format(
+                    logging.warning('{} {} does not have "exptime". Setting continuous path'.format(
                         self.__class__.__name__, self.name))
                     exposure = False
                     step = 1
@@ -448,8 +448,7 @@ class Chord:
         if f[np.argmin(r)] < center_f:
             sense = sense.replace('E', 'W')
         if verbose:
-            print(self.name)
-            print('Impact parameter', np.round(impact, 1), sense)
+            logging.info(f'Impact parameter for chord {self.name}: {np.round(impact, 1)}, {sense}')
         return impact, sense
 
     def get_theoretical_times(self, equatorial_radius, center_f=0, center_g=0, oblateness=0, position_angle=0, sigma=0,
@@ -521,8 +520,7 @@ class Chord:
         ev = r_path < r_ellipse + sigma
         if not np.any(ev):
             if verbose:
-                print(self.name)
-                print('Negative chord \n')
+                logging.info(f"Negative chord: {self.name}")
         try:
             imm = time[ev].jd.argmin()
             eme = time[ev].jd.argmax()
@@ -532,10 +530,10 @@ class Chord:
             theory_immersion_time = time[ev][imm]
             theory_emersion_time = time[ev][eme]
             if verbose:
-                print(self.name)
-                print('IMMERSION TIME: {} UTC'.format(theory_immersion_time.iso))
-                print('EMERSION  TIME: {} UTC'.format(theory_emersion_time.iso))
-                print('CHORD SIZE    : {:.3f} km \n'.format(theory_chord_size))
+                logging.info(self.name)
+                logging.info('IMMERSION TIME: {} UTC'.format(theory_immersion_time.iso))
+                logging.info('EMERSION  TIME: {} UTC'.format(theory_emersion_time.iso))
+                logging.info('CHORD SIZE    : {:.3f} km \n'.format(theory_chord_size))
         except:
             theory_chord_size = 0
             theory_immersion_time = None

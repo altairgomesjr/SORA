@@ -1,3 +1,5 @@
+import logging
+
 import astropy.units as u
 import numpy as np
 
@@ -30,10 +32,11 @@ def search_sbdb(name):
     from astroquery.jplsbdb import SBDB
     from . import values
 
-    print('Obtaining data for {} from SBDB'.format(name))
+    logging.info('Obtaining data for {} from SBDB'.format(name))
     sbdb = SBDB.query(name, full_precision=True, solution_epoch=True, validity=True, phys=True, discovery=True, cache=False)
     if 'message' in sbdb:
         if sbdb['message'] == values.not_found_message:
+            logging.error(sbdb['message'])
             raise ValueError(values.not_found_message + " on SBDB")
         elif sbdb['message'] == values.many_objects_message:
             sbdb = select_body(sbdb)
@@ -58,7 +61,7 @@ def select_body(sbdb):
     """
     from astropy.table import Table
 
-    print('{} bodies were found.'.format(sbdb['count']))
+    logging.info('{} bodies were found.'.format(sbdb['count']))
     t = Table()
     t['num'] = np.arange(sbdb['count']) + 1
     t['Designation'] = sbdb['list']['pdes']
@@ -70,6 +73,7 @@ def select_body(sbdb):
         if choice in np.arange(sbdb['count'] + 1):
             break
     if choice == 0:
+        logging.error("Option 0 selected for SBDB search")
         raise ValueError('It was not possible to define a Small Body')
     return search_sbdb(name=sbdb['list']['pdes'][choice - 1])
 
@@ -376,5 +380,6 @@ def search_satdb(name):
     if planet is not None:
         planet['class'] = 'planet'
         return planet
+    logging.debug(f"Unknown satellite '{name}'")
     raise ValueError('specified object was not found')
 # end of hard coded block.

@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -54,9 +54,11 @@ class PhysicalData(u.Quantity):
 
     def __new__(cls, name, value, uncertainty=0.0, reference="User", notes="", unit=u.dimensionless_unscaled,
                 raise_error=False):
+        logging.debug(f'PhysicalData called. Parameters: name:{name}, value: {value}, uncertainty: {uncertainty}, reference: {reference}, notes: {notes}, unit: {unit}, raise_error: {raise_error}')
         given_unit = unit
         if value is None:
             if raise_error:
+                logging.error("The value must be a valid PhysicalData type. Given: {}".format(value))
                 raise TypeError("The value must be a valid PhysicalData type. Given: {}".format(value))
             else:
                 value = np.nan
@@ -69,9 +71,10 @@ class PhysicalData(u.Quantity):
             unit = value.unit
             value = value.value
         if not np.isscalar(value):
-            print(value)
+            logging.error('Given value must be a scalar. Given: {}'.format(value))
             raise ValueError('Given value must be a scalar. Given: {}'.format(value))
         if not unit.is_equivalent(given_unit):
+            logging.error('{} is not equivalent to {}'.format(unit, given_unit))
             raise ValueError('{} is not equivalent to {}'.format(unit, given_unit))
         physdata = super().__new__(cls, value=value, unit=unit)
         physdata = physdata.to(given_unit)
@@ -102,14 +105,16 @@ class PhysicalData(u.Quantity):
             unit = value.unit
             value = value.value
         if not np.isscalar(value):
-            print(value)
+            logging.error('Given value must be a scalar. Given: {}'.format(value))
             raise ValueError('Given value must be a scalar. Given: {}'.format(value))
         if not unit.is_equivalent(self.unit):
+            logging.error('{} is not equivalent to {}'.format(unit, given_unit))
             raise ValueError('{} is not equivalent to {}'.format(unit, given_unit))
         if '/' in str(value):
             value = np.max(np.absolute([float(i) for i in str(value).split('/')]))
         self._uncertainty = u.Quantity(value, unit).to(given_unit)
         if self._uncertainty < 0:
+            logging.error('Uncertainty cannot be a negative value')
             raise ValueError('uncertainty cannot be a negative value')
 
     @property
@@ -121,6 +126,7 @@ class PhysicalData(u.Quantity):
         if value is None:
             value = ""
         if not isinstance(value, str):
+            logging.error(f'reference must be a string. type: {type(value)}')
             raise TypeError('reference must be a string')
         self._reference = value
 
@@ -133,6 +139,7 @@ class PhysicalData(u.Quantity):
         if value is None:
             value = ""
         if not isinstance(value, str):
+            logging.error(f'notes must be a string. type: {type(value)}')
             raise TypeError('notes must be a string')
         self._notes = value
 
@@ -165,6 +172,7 @@ class BaseBody():
         else:
             albedo = PhysicalData('Albedo', value)
         if albedo < 0:
+            logging.error('Albedo cannot be a negative value. Given: {}'.format(albedo))
             raise ValueError("albedo cannot be a negative value")
         self._albedo = albedo
 
@@ -206,6 +214,7 @@ class BaseBody():
         else:
             diameter = PhysicalData('Diameter', value, unit=u.km)
         if diameter < 0:
+            logging.error('Diameter cannot be a negative value. Given: {}'.format(diameter))
             raise ValueError("diameter cannot be a negative value")
         self._diameter = diameter
         if not getattr(self, '_shape', None) and not np.isnan(self._diameter):
@@ -238,6 +247,7 @@ class BaseBody():
         else:
             density = PhysicalData('Density', value, unit=u.g / u.cm ** 3)
         if density < 0:
+            logging.error("Density cannot be a negative value. Given: {}".format(density))
             raise ValueError("density cannot be a negative value")
         self._density = density
 
@@ -253,6 +263,7 @@ class BaseBody():
         else:
             GM = PhysicalData('Standard Gravitational Parameter', value, unit=u.km ** 3 / u.s ** 2)
         if GM < 0:
+            logging.error("GM cannot be a negative value. Given: {}".format(GM))
             raise ValueError("GM cannot be a negative value")
         self._GM = GM
 
@@ -275,6 +286,7 @@ class BaseBody():
         else:
             rotation = PhysicalData('Rotation', value, unit=u.h)
         if rotation < 0:
+            logging.error("Rotation cannot be a negative value. Given: {}".format(rotation))
             raise ValueError("rotation cannot be a negative value")
         self._rotation = rotation
 
@@ -356,11 +368,13 @@ class BaseBody():
             elif isinstance(value, (list, str)):
                 value = EphemKernel(kernels=value, spkid=self.spkid)
             else:
+                logging.error("Unknown type for ephem: {}".format(type(value)))
                 raise ValueError('Cannot set "ephem" with {}. Allowed types are: {}'.format(type(value), allowed_types))
         if 'spkid' not in self._shared_with['ephem'] or self._shared_with['ephem']['spkid'] is None:
             if hasattr(value, '_spkid'):
                 self._shared_with['ephem']['spkid'] = value.spkid
             else:
+                logging.error("ephem object does not have spkid: {}".format(value))
                 raise AttributeError('spkid is not defined in {} or {}'.format(self.__class__.__name__, value.__class__.__name__))
         if hasattr(self, '_ephem'):
             self._ephem._shared_with['body'] = {}
@@ -369,7 +383,7 @@ class BaseBody():
         self._ephem._shared_with['body'] = self._shared_with['ephem']
         spknewval = getattr(value, 'spkid', None)
         if spkval != spknewval:
-            warnings.warn('spkid is different in {0} ({1}) and {2} ({3}). {0}\'s spkid will have higher priority'.format(
+            logging.warning('spkid is different in {0} ({1}) and {2} ({3}). {0}\'s spkid will have higher priority'.format(
                 self.__class__.__name__, spknewval, value.__class__.__name__, spkval))
 
     @property
@@ -382,6 +396,7 @@ class BaseBody():
     def frame(self, value):
         from .frame import PlanetocentricFrame
         if not isinstance(value, PlanetocentricFrame):
+            logging.error("Body frame must be a Planetocentric frame. Given: {}, {}".format(type(value), value))
             raise ValueError('frame attribute must be a PlanetocentricFrame object.')
         self._frame = value
         self.pole = value.pole
@@ -406,6 +421,8 @@ class BaseBody():
             if len(value) <= 3:
                 self._shape = Ellipsoid(*value)
             else:
+                logging.error('shape must be a sora.body.shape object or a string'
+                              ' with the path to the OBJ file. Given: {}'.format(value))
                 raise ValueError('shape must be a sora.body.shape object or a string'
                                  ' with the path to the OBJ file.')
 

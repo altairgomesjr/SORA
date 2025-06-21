@@ -1,4 +1,5 @@
 import warnings
+import logging
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation, GCRS, AltAz
@@ -69,7 +70,7 @@ class Observer:
     """
 
     def __init__(self, **kwargs):
-
+        logging.debug(f"Observer called: Parameters: {kwargs}")
         input_tests.check_kwargs(kwargs, allowed_kwargs=['code', 'height', 'lat', 'lon', 'name', 'site', 'ephem'])
         self.__name = kwargs.get('name', '')
         if 'code' in kwargs and any(i in kwargs for i in ['lon', 'lat', 'height']):
@@ -80,6 +81,7 @@ class Observer:
                 name, self.site = search_code_mpc()[self.code]
                 self.__name = kwargs.get('name', name)
             except:
+                logging.debug(f"Observer code {self.code} not found in MPC database.")
                 raise ValueError('code {} could not be located in MPC database'.format(self.code))
         elif 'site' in kwargs:
             self.site = input_tests.test_attr(kwargs['site'], EarthLocation, 'site')
@@ -308,6 +310,7 @@ class Spacecraft:
     """
 
     def __init__(self, name, spkid, ephem='horizons'):
+        logging.debug(f"Creating Spacecraft object. name: {name}, spkid: {spkid}, ephem: {ephem}")
         self._name = name
         self._spkid = spkid
         self._ephem = ephem

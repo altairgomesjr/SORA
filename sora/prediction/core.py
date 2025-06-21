@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.constants as const
 import astropy.units as u
@@ -190,6 +190,9 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
      : `sora.prediction.PredictionTable`
         PredictionTable with the occultation params for each event.
     """
+    logging.debug(f"prediction called. time_beg: {time_beg}, time_end: {time_end}, body: {body}, ephem: {ephem}'"
+                  f", mag_lim: {mag_lim}, catalogue: {catalogue}, step: {step}, divs: {divs}, sigma: {sigma}"
+                  f", radius: {radius}, verbose: {verbose}, reference_center: {reference_center}")
     from sora.observer import Observer, Spacecraft
     from sora.star.catalog import allowed_catalogues
     from .table import PredictionTable
@@ -221,7 +224,7 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
     if mag_lim is not None:
         if isinstance(mag_lim, (int, float)):
             if len(catalog.band) == 0:
-                warnings.warn(f"Catalogue '{catalog.name}' does not have any band defined.")
+                logging.warning(f"Catalogue '{catalog.name}' does not have any band defined.")
             else:
                 mag_lim = {next(iter(catalog.band)): mag_lim}
         if isinstance(mag_lim, dict):
@@ -234,7 +237,7 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
             radius = ephem.radius  # for v1.0, change to body.radius
         except AttributeError:
             radius = 0
-            warnings.warn('"radius" not given or found in body or ephem. Considering it to be zero.')
+            logging.warning('"radius" not given or found in body or ephem. Considering it to be zero.')
         if np.isnan(radius):
             radius = 0
     radius = u.Quantity(radius, unit=u.km)
@@ -301,7 +304,7 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
             'error_ra': ephem.error_ra.to(u.mas).value, 'error_dec': ephem.error_dec.to(u.mas).value,
             'ephem': ephem.meta['kernels'], 'catalogue': catalog.name}
     if not occs:
-        print('\nNo stellar occultation was found.')
+        logging.info('\nNo stellar occultation was found.')
         return PredictionTable(meta=meta)
     # create astropy table with the params
     occs2 = np.transpose(occs)
@@ -313,6 +316,6 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
         pa=[i.value for i in occs2[5]], vel=[i.value for i in occs2[6]], mag=mags,
         dist=[i.value for i in occs2[7]], source=occs2[0], meta=meta)
     if verbose:
-        print('\n{} occultations found.'.format(len(t)))
+        logging.info('\n{} occultations found.'.format(len(t)))
     t.sort('Epoch')
     return t

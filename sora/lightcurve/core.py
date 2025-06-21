@@ -1,5 +1,5 @@
 import os
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -9,8 +9,6 @@ from sora.config import input_tests
 from sora.config.decorators import deprecated_alias
 from .utils import bar_fresnel, calc_fresnel
 from sora.config.visuals import progressbar
-
-warnings.simplefilter('always', UserWarning)
 
 class LightCurve:
     """Defines a Light Curve.
@@ -114,6 +112,7 @@ class LightCurve:
 
     @deprecated_alias(lambda_0='central_bandpass', delta_lambda='delta_bandpass')  # remove this line for v1.0
     def __init__(self, name='', **kwargs):
+        logging.debug(f"LightCurve called. name={name}, kwargs={kwargs}")
 
         allowed_kwargs = ['emersion', 'emersion_err', 'immersion', 'immersion_err', 'initial_time', 'end_time',
                           'file', 'time', 'flux', 'exptime', 'central_bandpass', 'delta_bandpass', 'tref', 'dflux',
@@ -140,17 +139,18 @@ class LightCurve:
             self.immersion = kwargs['immersion']
             self.immersion_err = kwargs.get('immersion_err', 0.0)
             if self.immersion_err < 0:
-                warnings.warn("Immersion Error must be positive. Using absolute value.")
+                logging.warning("Immersion Error must be positive. Using absolute value.")
                 self.immersion_err = np.absolute(self.immersion_err)
             input_done = True
         if 'emersion' in kwargs:
             self.emersion = kwargs['emersion']
             self.emersion_err = kwargs.get('emersion_err', 0.0)
             if self.emersion_err < 0:
-                warnings.warn("Emersion Error must be positive. Using absolute value.")
+                logging.warning("Emersion Error must be positive. Using absolute value.")
                 self.emersion_err = np.absolute(self.emersion_err)
             try:
                 if self.emersion <= self.immersion:
+                    logging.debug(f"immersion time {self.immersion} is smaller than emersion time {self.emersion}")
                     raise ValueError("emersion time must be greater than immersion time")
             except AttributeError:
                 pass
@@ -159,6 +159,7 @@ class LightCurve:
             self.initial_time = kwargs['initial_time']
             self.end_time = kwargs['end_time']
             if self.end_time <= self.initial_time:
+                logging.debug(f"initial time {self.initial_time} is smaller than end time {self.end_time}")
                 raise ValueError('end_time must be greater than initial_time')
             input_done = True
         if 'flux' in kwargs or 'file' in kwargs:
@@ -433,7 +434,7 @@ class LightCurve:
             time_diffs = time_diffs = (self._time[1:] - self._time[:-1]).sec
             self.cycle = scst.mode(time_diffs, keepdims=False).mode
             if self.cycle < self.exptime:
-                warnings.warn('Exposure time ({:0.4f} seconds) higher than Cycle time ({:0.4f} seconds)'.
+                logging.warning('Exposure time ({:0.4f} seconds) higher than Cycle time ({:0.4f} seconds)'.
                               format(self.exptime, self.cycle))
 
     def set_exptime(self, exptime):
@@ -452,7 +453,7 @@ class LightCurve:
         self.exptime = exptime.value
         try:
             if self.cycle < self.exptime:
-                warnings.warn('Exposure time ({:0.4f} seconds) higher than Cycle time ({:0.4f} seconds)'.
+                logging.warning('Exposure time ({:0.4f} seconds) higher than Cycle time ({:0.4f} seconds)'.
                               format(self.exptime, self.cycle))
         except:
             pass
@@ -478,7 +479,7 @@ class LightCurve:
         """
         dist = u.Quantity(dist, unit=u.AU)
         if dist.value < 0:
-            warnings.warn("distance cannot be negative. Using absolute value.")
+            logging.warning("distance cannot be negative. Using absolute value.")
         self.dist = np.absolute(dist.value)
 
     def set_star_diam(self, d_star):
@@ -491,7 +492,7 @@ class LightCurve:
         """
         d_star = u.Quantity(d_star, unit=u.km)
         if d_star.value < 0:
-            warnings.warn("star diameter cannot be negative. Using absolute value.")
+            logging.warning("star diameter cannot be negative. Using absolute value.")
         self.d_star = np.absolute(d_star.value)
 
     @deprecated_alias(lambda_0='central_bandpass', delta_lambda='delta_bandpass')  # remove this line for v1.0
@@ -615,8 +616,8 @@ class LightCurve:
                         plt.title('Polynomial degree = {}'.format(nn), fontsize=15)
                         plt.show()
                 else:
-                    print('Normalization using a {} degree polynomial'.format(n))
-                    print('There is no improvement with a {} degree polynomial'.format(n+1))
+                    logging.info('Normalization using a {} degree polynomial'.format(n))
+                    logging.info('There is no improvement with a {} degree polynomial'.format(n+1))
                     break
         self.flux = lc_flux/flux_poly_model
         self.normalizer_flux = flux_poly_model
@@ -824,7 +825,7 @@ class LightCurve:
         delta_opacity = kwargs.get('dopacity', 0.0)
         do_opacity = 'dopacity' in kwargs
         if do_opacity == True:
-            warnings.warn("Fitting Opacity will be removed in future version")
+            logging.warning("Fitting Opacity will be removed in future version")
         if ('immersion_time' not in kwargs) and ('emersion_time' not in kwargs):
             immersion_time = preliminar_occ['immersion_time']
             do_immersion = True
@@ -880,7 +881,7 @@ class LightCurve:
         method = str(kwargs.get('method') or 'chisqr').lower()
 
         if method not in ['chisqr', 'least_squares', 'ls', 'fastchi', 'differential_evolution', 'de']:
-            warnings.warn(f'Invalid method `{method}` provided. Setting to default.')
+            logging.warning(f'Invalid method `{method}` provided. Setting to default.')
             method = 'chisqr'
 
         set_bestchi = False # variable used with convergence algorithms and fastchi

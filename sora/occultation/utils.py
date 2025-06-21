@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import astropy.constants as const
 import astropy.units as u
@@ -175,9 +176,9 @@ def calc_geometric_albedo(equivalent_radius, H_obj, equivalent_radius_error=0, H
     delta_albedo = np.absolute(albedo_error_p - albedo_error_m)
     if verbose:
         if (H_obj_error != 0) or (equivalent_radius_error != 0):
-            print('geometric albedo: {:.3f} +/- {:.3f} \n'.format(geometric_albedo, delta_albedo))
+            logging.info('geometric albedo: {:.3f} +/- {:.3f} \n'.format(geometric_albedo, delta_albedo))
         else:
-            print('geometric albedo: {:.3f} \n'.format(geometric_albedo))
+            logging.info('geometric albedo: {:.3f} \n'.format(geometric_albedo))
     return geometric_albedo, delta_albedo
 
 

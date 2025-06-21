@@ -1,4 +1,4 @@
-import warnings
+import logging
 
 import astropy.units as u
 import numpy as np
@@ -10,8 +10,6 @@ from sora.config.decorators import deprecated_alias, deprecated_function
 from .meta import MetaStar
 from .utils import search_star, van_belle, kervella, spatial_motion, choice_star
 from .catalog import allowed_catalogues
-
-warnings.simplefilter('always', UserWarning)
 
 __all__ = ['Star']
 
@@ -82,6 +80,7 @@ class Star(MetaStar):
 
     @deprecated_alias(log='verbose')  # remove this line in v1.0
     def __init__(self, catalogue='gaiadr3', **kwargs):
+        logging.debug(f"Star called. catalogue: {catalogue}, kwargs: {kwargs}")
 
         self._attributes = {}
         self.mag = {}
@@ -152,8 +151,8 @@ class Star(MetaStar):
         for key in kwargs:
             mag = input_tests.test_attr(kwargs[key], float, key)
             if key in self.mag:
-                warnings.warn('{0} mag already defined. {0}={1} will be replaced by {0}={2}'.format(
-                    key, self.mag[key], mag))
+                logging.warning('{0} mag already defined. {0}={1} will be replaced by {0}={2}'.format(
+                          key, self.mag[key], mag))
             self.mag[key] = mag
 
     def set_diameter(self, diameter):
@@ -166,7 +165,7 @@ class Star(MetaStar):
         """
         self.diameter_user = diameter * u.mas
         if diameter < 0:
-            warnings.warn("negative sizes are converted to positive.")
+            logging.warning("negative diameter is converted to positive.")
             self.diameter_user = np.absolute(self.diameter_user)
 
     def van_belle(self):
@@ -222,14 +221,14 @@ class Star(MetaStar):
         except:
             distance = distance * u.AU
         if distance < 0:
-            warnings.warn("negative distances are converted to positive.")
+            logging.warning("negative distances are converted to positive.")
             distance = np.absolute(distance)
 
         if mode in ['user', 'auto']:
             try:
                 diam = distance*np.tan(self.diameter_user)
                 if verbose:
-                    print('Calculating apparent diameter from user defined diameter')
+                    logging.info('Calculating apparent diameter from user defined diameter')
                 return diam.to(u.km)
             except:
                 pass
@@ -244,7 +243,7 @@ class Star(MetaStar):
                     text = ''
                     if self.bjones:
                         text += ' + Bailer-Jones et al. (2018)'
-                    print('Apparent diameter using Gaia' + text)
+                    logging.info('Apparent diameter using Gaia' + text)
                 return diam.to(u.km)
             except:
                 pass
@@ -260,7 +259,7 @@ class Star(MetaStar):
             if diam_kerv is None:
                 raise ValueError('Diameter could not be calculated for given band')
             if verbose:
-                print('Apparent diameter using Kervella et al. (2004)')
+                logging.info('Apparent diameter using Kervella et al. (2004)')
             diam = distance*np.tan(diam_kerv)
             return diam.to(u.km)
 
@@ -275,7 +274,7 @@ class Star(MetaStar):
             if diam_van is None:
                 raise ValueError('Diameter could not be calculated for given band')
             if verbose:
-                print('Apparent diameter using van Belle (1999)')
+                logging.warning('Apparent diameter using van Belle (1999)')
             diam = distance*np.tan(diam_van)
             return diam.to(u.km)
 
@@ -307,9 +306,9 @@ class Star(MetaStar):
                     if catalogue and len(catalogue) > 0:
                         break
                     if radius < max(search_radii):
-                        print(f"Retrying search with a larger radius: {radius * 2}", end="\r")
+                        logging.info(f"Retrying search with a larger radius: {radius * 2}", end="\r")
                 except Exception as e:
-                    warnings.warn(f"Search failed at radius {radius}: {e}")
+                    logging.warning(f"Search failed at radius {radius}: {e}")
                 
             if not catalogue or len(catalogue) == 0:
                 raise ValueError('No star was found. It does not exist or VizieR is out.')
@@ -346,10 +345,10 @@ class Star(MetaStar):
                 self.errors[key] = 0 * unit
 
         if getattr(self.meta_catalogue, 'RUWE', 0) > 1.4:
-            warnings.warn('This star has a RUWE of {:.2f}. '.format(self.meta_catalogue['RUWE']) +
+            logging.warning('This star has a RUWE of {:.2f}. '.format(self.meta_catalogue['RUWE']) +
                           'Please be aware that its positions must be handled with care.')
         if getattr(self.meta_catalogue, 'Dup', 0) == 1:
-            warnings.warn('This star was indicated as an source with duplicate sources ' +
+            logging.warning('This star was indicated as an source with duplicate sources ' +
                           'Please be aware that its positions must be handled with care.')
         A = (1*u.AU).to(u.km).value
         cov = np.zeros((6, 6))
@@ -394,7 +393,7 @@ class Star(MetaStar):
                                 catalog='I/297/out', verbose=self._verbose)
         if len(catalogue) == 0:
             if self._verbose:
-                warnings.warn('No star was found on NOMAD that matches the star')
+                logging.warning('No star was found on NOMAD that matches the star')
             return
         catalogue = catalogue[0]
         if len(catalogue) > 1:
