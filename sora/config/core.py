@@ -24,6 +24,15 @@ class LoggingConfig(BaseConfigSection):
         self.overwrite_log_file = merged_data.get('overwrite_log_file', False)
 
 
+class DamitConfig(BaseConfigSection):
+    LOCAL_KEYS = ['update_age_days']
+
+    def _initialize(self, global_data: dict, merged_data: dict):
+        self.database = global_data.get('database', 'damit.db')
+        self.json_data = global_data.get('json_data', 'damit_meta.json')
+        self.data_dir = global_data.get('data_dir', 'models')
+        self.update_age_days = merged_data.get('update_age_days', 20)
+
 # ─────────────────────────────────────────────────────────────────────
 # CONFIG CLASS (Singleton, Layered Global+Local)
 # ─────────────────────────────────────────────────────────────────────
@@ -71,6 +80,12 @@ class Config:
                                      global_data.get('logging', {}),
                                      merged_data.get('logging', {}))
 
+        self.damit = DamitConfig(self, 'damit',
+                                 global_data.get('damit', {}),
+                                 merged_data.get('damit', {}))
+
+        #logger.info(f"Configuration loaded (global: {self._global_path}, local: {self._local_path})")
+
     @property
     def config_path(self) -> Path:
         return self._local_path
@@ -89,6 +104,7 @@ class Config:
         """
         return {
             'logging': self.logging.to_dict_common(),
+            'damit': self.damit.to_dict_common(),
         }
 
     def to_local_dict(self) -> Dict[str, Any]:
@@ -99,6 +115,7 @@ class Config:
         data: Dict[str, Any] = {}
         for section_name, section_obj in [
             ('logging', self.logging),
+            ('damit', self.damit),
         ]:
             local_section = section_obj.to_dict_local()
             if local_section:  # only include sections that have local overrides
