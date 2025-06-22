@@ -135,10 +135,49 @@ class DamitDB(BaseDatabase):
         -------
         None
         """
-        mystr = self.get_data(
-            f'https://astro.troja.mff.cuni.cz/projects/damit/generated_files/open/AsteroidModel/{model_id}/shape.obj')
-        with open(f'shape_{model_id}.obj', 'w') as f:
-            f.write(mystr)
+        self._ensure_column(table='models', colname='shape_path')
+
+        # Check if it already exists on the database
+        self.open_connection()
+        query = "SELECT shape_path FROM models WHERE id = ?"
+        row = self.conn.execute(query, (model_id,)).fetchone()
+
+        if row and row[0]:
+            shape_path = row[0]
+            if os.path.exists(shape_path):
+                return os.path.abspath(shape_path)
+            else:
+                logging.warning(f"DAMIT: Model {model_id} path in DB is missing on disk. Re-downloading.")
+        if row is None:
+            logging.error(f"DAMIT: Model {model_id} does not exist on Damit database.")
+            raise ValueError(f"Model {model_id} does not exist on Damit database.")
+
+        base_url = "https://damit.cuni.cz/projects/damit/generated_files/open/AsteroidModel"
+        model_filename = f"shape_{model_id}.obj"
+        os.makedirs(self.data_dir, exist_ok=True)
+        model_path = os.path.join(self.data_dir, model_filename)
+
+        if not os.path.exists(model_path):
+            url = f"{base_url}/{model_id}/shape.obj"
+            try:
+                logging.info(f"DAMIT: Downloading model {model_id} from {url}")
+                mystr = self._get_data(url)
+                with open(model_path, "w") as f:
+                    f.write(mystr)
+                logging.info(f"DAMIT: Model {model_id} saved to {model_path}")
+            except requests.RequestException as e:
+                logging.error(f"DAMIT: Failed to download model {model_id}: {e}")
+                raise RuntimeError(f"Download failed for model {model_id}") from e
+
+        # Update data to database
+        with self.conn:
+            self.conn.execute("""
+                              UPDATE models
+                              SET shape_path = ?
+                              WHERE id = ?
+                              """, (os.path.abspath(model_path), model_id))
+
+        return os.path.abspath(model_path)
 
     @property
     def asteroids(self):

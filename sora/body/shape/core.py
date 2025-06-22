@@ -47,8 +47,8 @@ class Shape3D(BaseShape):
     def from_damit(cls, model_id):
         from sora.body.damit import DamitDB
         damit_db = DamitDB()
-        damit_db.get_model(model_id)
-        return cls(f'shape_{model_id}.obj')
+        model_path = damit_db.get_model(model_id)
+        return cls(model_path)
 
     @property
     def faces(self):
