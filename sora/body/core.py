@@ -4,7 +4,7 @@ import warnings
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord, Longitude, Latitude
+from astropy.coordinates import SkyCoord, Longitude, Latitude, ICRS
 from astropy.time import Time
 
 from sora.config import input_tests
@@ -23,7 +23,7 @@ class Body(BaseBody):
     name : `str`, required
         The name of the object. It can be the used `spkid` or `designation
         number` to query the SBDB (Small-Body DataBase). In this case, the name
-        is case insensitive.
+        is case-insensitive.
 
     database : `str`, optional, default='auto'
         The database to query the object. It can be ``satdb`` for our temporary
@@ -92,7 +92,7 @@ class Body(BaseBody):
 
     Note
     ----
-    The following attributes are are returned from the Small-Body DataBase when
+    The following attributes are returned from the Small-Body DataBase when
     ``database='sbdb'`` or from our temporary hardcoded Satellite DataBase when
     ``database='satdb'``:
 
@@ -137,6 +137,26 @@ class Body(BaseBody):
             self.spectral_type['SMASS']['value'] = kwargs.pop('smass')
         if 'tholen' in kwargs:
             self.spectral_type['Tholen']['value'] = kwargs.pop('tholen')
+        if kwargs.get('frame', '').lower() == 'damit':
+            from .damit.damit_database import DamitDB
+            db = DamitDB()
+            df = db.get_model_by_name(name, latest_only=True)
+            if len(df) == 0:
+                logging.debug(f"No data found on DAMIT for object {name}")
+            else:
+                from .frame import Kaasalainen
+                self.frame = Kaasalainen.from_damit(int(df['id'][0]))
+            kwargs.pop('frame')
+        if kwargs.get('shape', '').lower() == 'damit':
+            from .damit.damit_database import DamitDB
+            db = DamitDB()
+            df = db.get_model_by_name(name, latest_only=True)
+            if len(df) == 0:
+                logging.debug(f"No data found on DAMIT for object {name}")
+            else:
+                from .shape import Shape3D
+                self.shape = Shape3D.from_damit(int(df['id'][0]))
+            kwargs.pop('shape')
         for key in kwargs:
             setattr(self, key, kwargs[key])
         try:
@@ -422,7 +442,7 @@ class Body(BaseBody):
         try:
             epoch = time - pos.spherical.distance / const.c
             frame = self.frame.frame_at(epoch=epoch)
-            pole = frame.pole
+            pole = frame.pole.transform_to(ICRS())
             subobs = SkyCoord(-pos.cartesian).transform_to(frame=frame)
             orientation['sub_observer'] = subobs.to_string('decimal')
             # TODO(subsun is technically wrong. We must correct to an observer on the body.)
@@ -430,7 +450,7 @@ class Body(BaseBody):
             subsun = SkyCoord(-pos_sun.cartesian).transform_to(frame=frame)
             orientation['sub_solar'] = subsun.to_string('decimal')
         except AttributeError:
-            warnings.warn('Frame attribute is not defined')
+            logging.warning('Frame attribute is not defined')
             pole = self.pole
         if not np.isnan(pole.ra):
             position_angle = pos.position_angle(pole).rad * u.rad

@@ -49,7 +49,22 @@ class DamitDB(BaseDatabase):
     def __init__(self):
         super().__init__(config.damit)
 
-    def get_model_by_name(self, name):
+    def get_model_by_name(self, name, latest_only: bool = False):
+        """
+        Retrieves asteroid models associated with a given asteroid name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the asteroid.
+        latest_only : bool, default False
+            If True, return only the most recently modified model.
+
+        Returns
+        -------
+        pd.DataFrame
+            Model data.
+        """
         self.open_connection()
         query = """
                 SELECT m.*
@@ -57,6 +72,8 @@ class DamitDB(BaseDatabase):
                 JOIN asteroids a ON m.asteroid_id = a.id
                 WHERE LOWER(a.name) = LOWER(?) \
                 """
+        if latest_only:
+            query += " ORDER BY m.version DESC LIMIT 1"
         df = pd.read_sql_query(query, self.conn, params=(name,))
         self.close_connection()
         return df
