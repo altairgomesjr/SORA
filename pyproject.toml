@@ -42,6 +42,10 @@ repository = "https://github.com/riogroup/SORA"
 documentation = "https://sora.readthedocs.io/"
 issues = "https://github.com/riogroup/SORA/issues"
 
+# Entry point for CLI
+[project.scripts]
+sora = "sora.cli:main"
+
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
