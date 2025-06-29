@@ -12,6 +12,22 @@ class LoggingConfig(BaseConfigSection):
     LOCAL_KEYS = ['log_to_debug', 'log_debug_path', 'overwrite_debug_file', 'log_to_file', 'log_to_console',
                   'log_level', 'log_file_path', 'log_file_path', 'overwrite_log_file']
 
+    # Metadata for interactive prompts
+    PROMPTS = {
+        'log_to_debug': {'question': "Save debug log to a file?", 'level': 3},
+        'log_debug_path': {'question': "File to save debug logs to:", 'level': 3},
+        'overwrite_debug_file': {'question': "Overwrite debug file log when starting SORA?", 'level': 2},
+
+        'log_to_file': {'question': "Save log to a file?", 'level': 1},
+        'log_file_path': {'question': "File to save logs to:", 'level': 2},
+        'overwrite_log_file': {'question': "Overwrite file log when starting SORA?", 'level': 1},
+        'log_to_console': {'question': "Show log to console?", 'level': 1},
+        'log_level': {
+            'question': "Log level:", 'level': 2,
+            'choices': ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        }
+    }
+
     def _initialize(self, global_data: dict, merged_data: dict):
         self.log_to_debug = merged_data.get('log_to_debug', True)
         self.log_debug_path = merged_data.get('log_debug_path', './logs/sora_debug.log')
@@ -26,6 +42,14 @@ class LoggingConfig(BaseConfigSection):
 
 class DamitConfig(BaseConfigSection):
     LOCAL_KEYS = ['update_age_days']
+
+    # Metadata for interactive prompts
+    PROMPTS = {
+        'database': {'question': "Database file:", 'level': 3},
+        'json_data': {'question': "JSON Meta file:", 'level': 3},
+        'data_dir': {'question': "Directory to save DAMIT 3D models:", 'level': 3},
+        'update_age_days': {'question': "Maximum number of days between automatic updates:", 'level': 1},
+    }
 
     def _initialize(self, global_data: dict, merged_data: dict):
         self.database = global_data.get('database', 'damit.db')
@@ -85,6 +109,20 @@ class Config:
                                  merged_data.get('damit', {}))
 
         #logger.info(f"Configuration loaded (global: {self._global_path}, local: {self._local_path})")
+
+    def get_prompt_schema(self):
+        """
+        Returns a dict:
+          { section_name: { key: meta_dict, … }, … }
+        but only for sections with PROMPTS defined.
+        """
+        schema = {}
+        for sec_name in ['logging', 'damit']:
+            section = getattr(self, sec_name, None)
+            meta = getattr(section.__class__, 'PROMPTS', None)
+            if section is not None and meta:
+                schema[sec_name] = meta
+        return schema
 
     @property
     def config_path(self) -> Path:
