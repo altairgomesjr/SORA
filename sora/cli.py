@@ -184,6 +184,11 @@ def main():
     cp = subparsers.add_parser("config", help="Interactively create or update SORA configuration")
     cp.add_argument("mode", default="basic", choices=["basic", "advanced"], help="Level of configuration", nargs='?')
 
+    # dev
+    dev = subparsers.add_parser("dev", help="Developer utilities namespace")
+    dev_sub = dev.add_subparsers(dest="dev_command", required=True)
+    dev_sub.add_parser("config", help="Configuration at developer level")
+
     # version
     subparsers.add_parser("version", help="Show installed SORA version")
 
@@ -206,6 +211,10 @@ def main():
 
     elif args.command == "config":
         interactive_config(mode=args.mode)
+
+    elif args.command == "dev":
+        if args.dev_command == "config":
+            interactive_config(mode="develop")
 
     elif args.command == "version":
         cmd_version()
