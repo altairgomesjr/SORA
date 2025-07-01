@@ -145,6 +145,11 @@ def interactive_config(mode: str = "basic"):
             from sora.body.damit.damit_database import DamitDB
             db = DamitDB()
             db.update_database(force=True)
+        answer = questionary.confirm('Would you like to download (or update) the NIMA tables now?').ask()
+        if answer:
+            from sora.ephem.nima import NimaDB
+            db = NimaDB()
+            db.update_database(force=True)
 
     logging.info("Configuration updated!")
 

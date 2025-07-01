@@ -57,6 +57,24 @@ class DamitConfig(BaseConfigSection):
         self.data_dir = global_data.get('data_dir', 'models')
         self.update_age_days = merged_data.get('update_age_days', 20)
 
+
+class NimaConfig(BaseConfigSection):
+    LOCAL_KEYS = ['update_age_days']
+
+    # Metadata for interactive prompts
+    PROMPTS = {
+        'database': {'question': "Database file:", 'level': 3},
+        'json_data': {'question': "JSON file:", 'level': 3},
+        'data_dir': {'question': "Directory to save NIMA kernels:", 'level': 3},
+        'update_age_days': {'question': "Maximum number of days between automatic updates:", 'level': 1},
+    }
+
+    def _initialize(self, global_data: dict, merged_data: dict):
+        self.database = global_data.get('database', 'nima.db')
+        self.json_data = global_data.get('json_data', 'nima_meta.json')
+        self.data_dir = global_data.get('data_dir', 'kernels/nima')
+        self.update_age_days = merged_data.get('update_age_days', 30)
+
 # ─────────────────────────────────────────────────────────────────────
 # CONFIG CLASS (Singleton, Layered Global+Local)
 # ─────────────────────────────────────────────────────────────────────
@@ -108,6 +126,10 @@ class Config:
                                  global_data.get('damit', {}),
                                  merged_data.get('damit', {}))
 
+        self.nima = NimaConfig(self, 'nima',
+                               global_data.get('nima', {}),
+                               merged_data.get('nima', {}))
+
         #logger.info(f"Configuration loaded (global: {self._global_path}, local: {self._local_path})")
 
     def get_prompt_schema(self):
@@ -117,7 +139,7 @@ class Config:
         but only for sections with PROMPTS defined.
         """
         schema = {}
-        for sec_name in ['logging', 'damit']:
+        for sec_name in ['logging', 'damit', 'nima']:
             section = getattr(self, sec_name, None)
             meta = getattr(section.__class__, 'PROMPTS', None)
             if section is not None and meta:
@@ -143,6 +165,7 @@ class Config:
         return {
             'logging': self.logging.to_dict_common(),
             'damit': self.damit.to_dict_common(),
+            'nima': self.nima.to_dict_common(),
         }
 
     def to_local_dict(self) -> Dict[str, Any]:
@@ -154,6 +177,7 @@ class Config:
         for section_name, section_obj in [
             ('logging', self.logging),
             ('damit', self.damit),
+            ('nima', self.nima),
         ]:
             local_section = section_obj.to_dict_local()
             if local_section:  # only include sections that have local overrides
