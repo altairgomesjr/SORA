@@ -75,6 +75,16 @@ class NimaConfig(BaseConfigSection):
         self.data_dir = global_data.get('data_dir', 'kernels/nima')
         self.update_age_days = merged_data.get('update_age_days', 30)
 
+class EphemConfig(BaseConfigSection):
+    LOCAL_KEYS = []
+
+    PROMPTS = {}
+
+    def _initialize(self, global_data: dict, merged_data: dict):
+        self.planet_kernels = global_data.get('planet_kernels', 'planetary_kernels.json')
+        self.data_dir = global_data.get('data_dir', 'kernels/planetary')
+        self.planetary_default = merged_data.get('planetary_default', 'DE440')
+
 # ─────────────────────────────────────────────────────────────────────
 # CONFIG CLASS (Singleton, Layered Global+Local)
 # ─────────────────────────────────────────────────────────────────────
@@ -130,6 +140,10 @@ class Config:
                                global_data.get('nima', {}),
                                merged_data.get('nima', {}))
 
+        self.ephem = EphemConfig(self, 'ephem',
+                                 global_data.get('ephem', {}),
+                                 merged_data.get('ephem', {}))
+
         #logger.info(f"Configuration loaded (global: {self._global_path}, local: {self._local_path})")
 
     def get_prompt_schema(self):
@@ -139,7 +153,7 @@ class Config:
         but only for sections with PROMPTS defined.
         """
         schema = {}
-        for sec_name in ['logging', 'damit', 'nima']:
+        for sec_name in ['logging', 'damit', 'nima', 'ephem']:
             section = getattr(self, sec_name, None)
             meta = getattr(section.__class__, 'PROMPTS', None)
             if section is not None and meta:
@@ -166,6 +180,7 @@ class Config:
             'logging': self.logging.to_dict_common(),
             'damit': self.damit.to_dict_common(),
             'nima': self.nima.to_dict_common(),
+            'ephem': self.ephem.to_dict_common(),
         }
 
     def to_local_dict(self) -> Dict[str, Any]:
@@ -178,6 +193,7 @@ class Config:
             ('logging', self.logging),
             ('damit', self.damit),
             ('nima', self.nima),
+            ('ephem', self.ephem),
         ]:
             local_section = section_obj.to_dict_local()
             if local_section:  # only include sections that have local overrides
