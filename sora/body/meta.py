@@ -5,6 +5,9 @@ import numpy as np
 from astropy.coordinates import SkyCoord, Longitude, Latitude
 
 from sora.ephem import EphemPlanete, EphemKernel, EphemJPL, EphemHorizons
+from sora.config.core import Config
+
+config = Config()
 
 __all__ = ['PhysicalData']
 
@@ -362,7 +365,15 @@ class BaseBody():
     @ephem.setter
     def ephem(self, value):
         allowed_types = [EphemPlanete, EphemKernel, EphemJPL, EphemHorizons]
-        if type(value) not in allowed_types:
+        if type(value) is str and value == 'nima':
+            from sora.ephem.nima import NimaDB
+            from sora.ephem.planetkers import PlanetaryKernelDB
+            nimadb = NimaDB()
+            planet = PlanetaryKernelDB()
+            planet_path = planet.get_planetary_kernel(config.ephem.planetary_default)
+            nima_path, spkid = nimadb.get_bspfile(self._search_name)
+            value = EphemKernel([planet_path, nima_path], spkid=spkid)
+        elif type(value) not in allowed_types:
             if isinstance(value, str) and value.lower() == 'horizons':
                 value = EphemHorizons(name=self._search_name, id_type=self._id_type, spkid=self.spkid)
             elif isinstance(value, (list, str)):
