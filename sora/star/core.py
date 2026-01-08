@@ -315,7 +315,6 @@ class Star(MetaStar):
         else:
             raise ValueError('No `code` or `coord` attribute provided on the object.')
 
-        catalogue = catalogue[0]
         if len(catalogue) > 1:
             if self._verbose:
                 print('{} stars were found within {} arcsec from given coordinate.'.format(len(catalogue), int(radius.value)))
@@ -358,17 +357,17 @@ class Star(MetaStar):
             A ** 2) + (self.parallax.to(u.rad).value * self.errors['rad_vel'].value / A) ** 2
         cov[5, 5] = x
         if catalog.name in ['GaiaDR2', 'GaiaEDR3', 'GaiaDR3']:
-            a = ['RA', 'DE', 'Plx', 'pmRA', 'pmDE']
+            a = ['ra', 'dec', 'parallax', 'pmra', 'pmdec']
             for i in np.arange(5):
-                v1 = 'e_' + a[i]
-                if i in [0, 1]:
-                    v1 += '_ICRS'
+                v1 = a[i] + "_error"
+                # if i in [0, 1]:
+                #     v1 += '_ICRS'
                 for j in np.arange(i, 5):
-                    v2 = 'e_' + a[j]
-                    if j in [0, 1]:
-                        v2 += '_ICRS'
+                    v2 = a[j] + "_error"
+                    # if j in [0, 1]:
+                    #     v2 += '_ICRS'
                     if i != j:
-                        x = self.meta_catalogue[a[i]+a[j]+'cor']*self.meta_catalogue[v1]*self.meta_catalogue[v2]
+                        x = self.meta_catalogue[a[i]+"_"+a[j]+"_"+'corr']*self.meta_catalogue[v1]*self.meta_catalogue[v2]
                         if not np.ma.core.is_masked(x):
                             cov[i, j] = x
                             cov[j, i] = cov[i, j]
@@ -480,11 +479,12 @@ class Star(MetaStar):
             return SkyCoord(ra=p.ra, dec=p.dec, distance=p.distance)
 
         dt = time - self.epoch
-        if not time.isscalar:
-            if time.max() - time.min() > 1*u.day:
-                raise ValueError('list of times must be in a interval of 1 day to process.')
-            dt = dt[0]
-        bar_star = spatial_motion(self.ra, self.dec, self.pmra, self.pmdec, self.parallax, self.rad_vel, dt=dt.jd)
+        # if not time.isscalar:
+        #     if time.max() - time.min() > 1*u.day:
+        #         raise ValueError('list of times must be in a interval of 1 day to process.')
+        #     dt = dt[0]
+        bar_star = spatial_motion(self.ra.deg, self.dec.deg, self.pmra.value, self.pmdec.value, self.parallax.value,
+                                  self.rad_vel.value, dt=dt.jd)
 
         if observer == "barycenter" or self.coord.distance.unit.is_unity() or np.isnan(self.coord.distance):
             return apply_offset(bar_star)
@@ -519,8 +519,8 @@ class Star(MetaStar):
         except:
             time = Time(time, format='jd', scale='utc')
         dt = time - self.epoch
-        n_coord, errors = spatial_motion(self.ra, self.dec, self.pmra, self.pmdec, self.parallax,
-                                         self.rad_vel, dt=dt.jd, cov_matrix=self.cov)
+        n_coord, errors = spatial_motion(self.ra.deg, self.dec.deg, self.pmra.value, self.pmdec.value,
+                                         self.parallax.value, self.rad_vel.value, dt=dt.jd, cov_matrix=self.cov)
         return errors[0]*u.mas, errors[1]*u.mas
 
     def add_offset(self, da_cosdec, ddec):

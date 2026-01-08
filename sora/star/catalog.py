@@ -221,6 +221,8 @@ class VizierCatalogue(Catalogue):
             columns = ['**']
         vquery = Vizier(columns=columns, row_limit=row_limit, timeout=timeout, **kwargs)
         catalogue = vquery.query_region(coord, radius=radius, width=width, height=height, catalog=self.cat_path, cache=False)
+        if catalogue and len(catalogue) > 0:
+            return catalogue[0]
         return catalogue
 
     def __repr__(self):
@@ -229,24 +231,106 @@ class VizierCatalogue(Catalogue):
     def __str__(self):
         return f'<VizierCatalogue: {self.name} defined in https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source={self.cat_path}>'
 
+class GaiaCatalogue(Catalogue):
+    inner_join = """AS gs\n
+                INNER JOIN gaiadr3.astrophysical_parameters AS ap\n
+                ON gs.source_id = ap.source_id"""
 
-gaiadr2 = VizierCatalogue(name='GaiaDR2', cat_path='I/345/gaia2', code='Source', ra='RA_ICRS', dec='DE_ICRS',
-                          pmra='pmRA', pmdec='pmDE', epoch='Epoch', parallax='Plx', rad_vel='RV', band={'G': 'Gmag'},
-                          errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RV'])
+    def __init__(self, **kwargs):
+        super(GaiaCatalogue, self).__init__(**kwargs)
 
-gaiaedr3 = VizierCatalogue(name='GaiaEDR3', cat_path='I/350/gaiaedr3', code='Source', ra='RA_ICRS', dec='DE_ICRS',
-                           pmra='pmRA', pmdec='pmDE', epoch='Epoch', parallax='Plx', rad_vel='RVDR2', band={'G': 'Gmag'},
-                           errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RVDR2'])
+    def search_star(self, code=None, coord=None, radius=None):
+        import pyvo
+        import pandas as pd
+        if code is not None:
+            filters = f"WHERE gs.source_id = {code}"
+            query = f"""SELECT *\nFROM {self.cat_path}.gaia_source {self.inner_join}\n{filters}"""
+            tap_service = pyvo.dal.TAPService("https://gea.esac.esa.int/tap-server/tap")
+            results = tap_service.run_sync(query)
+            catalogue = results.to_table()
+        elif coord is not None:
+            catalogue = self.search_region(coord=coord, radius=radius)
+        else:
+            raise ValueError('At least a code or coord should be given as input')
+        # TODO(Implement choice star if necessary)
+        return catalogue
+
+    def search_region(self, coord, radius=None, width=None, height=None, columns=None,
+                      row_limit=10_000_000, timeout=600, **kwargs):
+        import pyvo
+        import pandas as pd
+
+        col_keys = ['code', 'ra', 'dec', 'pmra', 'pmdec', 'parallax', 'rad_vel', 'epoch']
+        inner_join = ""
+        cat_pointer = ""
+        filter_data = []
+        filters = ""
+
+        if columns == 'simple':
+            columns = ', '.join(
+                [getattr(self, p) for p in col_keys if hasattr(self, p) and isinstance(getattr(self, p), str)] + \
+                list(self.band.values() if hasattr(self, 'band') else {})
+                )
+        elif columns is None:
+            columns = '*'
+            inner_join = self.inner_join
+            cat_pointer = 'gs.'
+
+        if 'mag_lim' in kwargs:
+            filter_data.append(f"{cat_pointer}phot_g_mean_mag < {kwargs.get('mag_lim', 25)}")
+
+        # Define the target sky position and radius
+        ra_deg = coord.ra.deg  # Right Ascension in degrees (e.g. M31 center)
+        dec_deg = coord.dec.deg  # Declination in degrees
+
+        if radius is not None:
+            radius_deg = radius.to(u.deg).value  # Radius in deg
+            filter_data.append(
+                f"""CONTAINS(\n  POINT('ICRS', ra, dec),\n  CIRCLE('ICRS', {ra_deg}, {dec_deg}, {radius_deg})\n) = 1""")
+
+        if len(filter_data) > 0:
+            filters = "WHERE " + "\n AND ".join(filter_data)
+
+        # Define the ADQL cone search query
+        query = f"""SELECT {columns}\nFROM {self.cat_path}.gaia_source {inner_join}\n{filters}"""
+
+        # Connect to the Gaia TAP service
+        tap_service = pyvo.dal.TAPService("https://gea.esac.esa.int/tap-server/tap")
+
+        # Run the ADQL query synchronously
+        results = tap_service.run_sync(query)
+
+        # Convert results to astropy table
+        catalogue = results.to_table()
+
+        return catalogue
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f'<GaiaCatalogue: {self.name} defined in https://gea.esac.esa.int/tap-server/tap>'
+
+# gaiadr2 = VizierCatalogue(name='GaiaDR2', cat_path='I/345/gaia2', code='Source', ra='RA_ICRS', dec='DE_ICRS',
+#                           pmra='pmRA', pmdec='pmDE', epoch='Epoch', parallax='Plx', rad_vel='RV', band={'G': 'Gmag'},
+#                           errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RV'])
+#
+# gaiaedr3 = VizierCatalogue(name='GaiaEDR3', cat_path='I/350/gaiaedr3', code='Source', ra='RA_ICRS', dec='DE_ICRS',
+#                            pmra='pmRA', pmdec='pmDE', epoch='Epoch', parallax='Plx', rad_vel='RVDR2', band={'G': 'Gmag'},
+#                            errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RVDR2'])
 
 epoch = Time('J2016.0', scale='tdb')
-gaiadr3 = VizierCatalogue(name='GaiaDR3', cat_path='I/355/gaiadr3', code='Source', ra='RA_ICRS', dec='DE_ICRS',
-                          pmra='pmRA', pmdec='pmDE', epoch=epoch, parallax='Plx', rad_vel='RV', band={'G': 'Gmag'},
-                          errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RV'])
+gaiadr3 = GaiaCatalogue(name='GaiaDR3', cat_path='gaiadr3', code='source_id', ra='ra', dec='dec',
+                          pmra='pmra', pmdec='pmdec', epoch=epoch, parallax='parallax', rad_vel='radial_velocity',
+                          band={'G': 'phot_g_mean_mag'}, errors=['ra_error', 'dec_error', 'pmra_error', 'pmdec_error', 'parallax_error', 'radial_velocity_error'])
+# gaiadr3 = VizierCatalogue(name='GaiaDR3', cat_path='I/355/gaiadr3', code='Source', ra='RA_ICRS', dec='DE_ICRS',
+#                           pmra='pmRA', pmdec='pmDE', epoch=epoch, parallax='Plx', rad_vel='RV', band={'G': 'Gmag'},
+#                           errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_Plx', 'e_RV'])
 
 epoch_ubsc = Time('J1991.25', scale='tdb')
 ubsc = VizierCatalogue(name='UBSC', cat_path='J/AJ/164/36/table2', code='HIP', ra='RA_ICRS', dec='DE_ICRS',
                        pmra='pmRA', pmdec='pmDE', epoch=epoch_ubsc, parallax='plx', band={'Hp': 'Hpmag'},
                        errors=['e_RA_ICRS', 'e_DE_ICRS', 'e_pmRA', 'e_pmDE', 'e_plx', None])
 
-allowed_catalogues = SelectDefault(instance=VizierCatalogue,
-                                   defaults={'gaiadr2': gaiadr2, 'gaiaedr3': gaiaedr3, 'gaiadr3': gaiadr3, 'ubsc': ubsc})
+allowed_catalogues = SelectDefault(instance=Catalogue,
+                                   defaults={'gaiadr3': gaiadr3, 'ubsc': ubsc})

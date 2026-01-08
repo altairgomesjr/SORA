@@ -272,7 +272,6 @@ def prediction(time_beg, time_end, body=None, ephem=None, mag_lim=None, catalogu
         if len(catalogue) == 0:
             print('    No star found. The region is too small or VizieR is out.')
             continue
-        catalogue = catalogue[0]
         if verbose:
             print('    {} {} stars downloaded'.format(len(catalogue), catalog.name))
             print('Identifying occultations ...')
