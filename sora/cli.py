@@ -190,7 +190,7 @@ def main():
     cp.add_argument("mode", default="basic", choices=["basic", "advanced"], help="Level of configuration", nargs='?')
 
     # dev
-    dev = subparsers.add_parser("dev", help="Developer utilities namespace")
+    dev = subparsers.add_parser("dev", description="Developer utilities namespace")
     dev_sub = dev.add_subparsers(dest="dev_command", required=True)
     dev_sub.add_parser("config", help="Configuration at developer level")
 

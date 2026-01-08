@@ -230,7 +230,7 @@ def ephem_kernel(time, target, observer, kernels, output='ephemeris'):
         # calculates new light time
         delt = (position.norm() / const.c).decompose()
         # if difference between new and previous light time is smaller than 0.001 sec, then continue.
-        if output == 'vector' or np.all(np.absolute(((dt - tempo) - delt).sec) < 0.001):
+        if output == 'vector' or np.all(np.absolute(((dt - tempo) - delt).sec) < 0.0000001):
             break
     coord = SkyCoord(position, representation_type='cartesian')
     spice.kclear()

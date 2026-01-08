@@ -58,7 +58,7 @@ exclude = ["sora._dev*"]
 version_file = "sora/_version.py"
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["dependencies.txt"]}
+dependencies = {file = ["requirements.txt"]}
 
 [tool.pytest.ini_options]
 testpaths = [
