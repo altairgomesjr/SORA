@@ -94,9 +94,6 @@ class Star(MetaStar):
         self.catalogue = catalogue
         self._catalogue = catalogue.name
         self.catalogue_name = catalogue.name
-        self.catalogue_service = self._get_catalogue_service(catalogue)
-        self.catalogue_ref = self._get_catalogue_reference(catalogue)
-        self.catalogue_description = self._format_catalogue_description(catalogue)
         self._verbose = kwargs.get('verbose', True)
         local = kwargs.get('local', False)
         self.bjones = False
@@ -133,22 +130,6 @@ class Star(MetaStar):
             self.bjones = kwargs.get('bjones', False)
         except ValueError:
             pass
-
-    @staticmethod
-    def _get_catalogue_service(catalogue):
-        if hasattr(catalogue, 'tap_url'):
-            return 'LIneA TAP'
-        return 'VizieR'
-
-    @staticmethod
-    def _get_catalogue_reference(catalogue):
-        if hasattr(catalogue, 'tap_url'):
-            return catalogue.cat_path
-        return catalogue.cat_path
-
-    @classmethod
-    def _format_catalogue_description(cls, catalogue):
-        return f'{catalogue.name} ({cls._get_catalogue_service(catalogue)}: {cls._get_catalogue_reference(catalogue)})'
 
     def set_magnitude(self, **kwargs):
         """Sets the magnitudes of a star.
@@ -412,7 +393,7 @@ class Star(MetaStar):
         self.cov = cov
 
         if self._verbose:
-            print('1 {} star found band={}'.format(self.catalogue_description, self.mag))
+            print('1 {} star found band={}'.format(self.catalogue._catalogue_description, self.mag))
             print('star coordinate at J{}: RA={} +/- {}, DEC={} +/- {}'.format(self.epoch.jyear,
                   self.ra.to_string(u.hourangle, sep='hms', precision=5), self.errors['ra'],
                   self.dec.to_string(u.deg, sep='dms', precision=4), self.errors['dec']))
@@ -608,12 +589,12 @@ class Star(MetaStar):
         """
         out = ''
         if hasattr(self, 'code'):
-            out += '{} star Source ID: {}\n'.format(self.catalogue_description, self.code)
+            out += '{} star Source ID: {}\n'.format(self.catalogue._catalogue_description, self.code)
         else:
             out += 'User coordinates\n'
         text_cgaudin = ''
         if self.__cgaudin:
-            text_cgaudin = f'{self.catalogue_description} Proper motion corrected as suggested by Cantat-Gaudin & Brandt (2021) \n'
+            text_cgaudin = f'{self.catalogue._catalogue_description} Proper motion corrected as suggested by Cantat-Gaudin & Brandt (2021) \n'
         out += ('ICRS star coordinate at J{}:\n'
                 'RA={} +/- {:.4f}, DEC={} +/- {:.4f}\n'
                 'pmRA={:.3f} +/- {:.3f} mas/yr, pmDEC={:.3f} +/- {:.3f} mas/yr\n{}'

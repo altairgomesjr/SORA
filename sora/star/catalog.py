@@ -30,6 +30,20 @@ class Catalogue(metaclass=ABCMeta):
     ruwe: str = None
     duplicated_source: str = None
 
+    @property
+    def _catalogue_service(self):
+        if hasattr(self, 'tap_url'):
+            return 'LIneA TAP'
+        return 'VizieR'
+
+    @property
+    def _catalogue_reference(self):
+        return self.cat_path
+
+    @property
+    def _catalogue_description(self):
+        return f'{self.name} ({self._catalogue_service}: {self._catalogue_reference})'
+
     @abstractmethod
     def search_star(self):
         pass
