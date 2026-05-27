@@ -225,8 +225,8 @@ class Observer:
         return self.__name
 
     @name.setter
-    def name(self, name):
-        self.__name = input_tests.test_attr(name, str, 'name')
+    def name(self, value):
+        raise AttributeError("Observer.name cannot be changed after instantiation")
 
     @property
     def lon(self):
