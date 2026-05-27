@@ -11,8 +11,11 @@ def search_code_mpc(code):
 
     Returns
     -------
-    observatories : `dict`
-        A python dictionary with all the sites as Astropy EarthLocation objects.
+    name : `str`
+        Observatory name from the MPC database.
+
+    site : `astropy.coordinates.EarthLocation`
+        Observatory site as an Astropy EarthLocation object.
     """
     from astropy.coordinates import EarthLocation
     import warnings
@@ -24,17 +27,17 @@ def search_code_mpc(code):
     query = f"SELECT * FROM mpc_sbn.obscodes WHERE obscode = '{code}'"
     warnings.warn(f'Querying code {code} in the Linea MPC Observer Database...')
     result = tap.run_sync(query)
-    table = result.to_table()    
-    
-    observatories = {}
-    for line in table:
-        code = line['obscode']
-        lon = line['longitude'] * u.deg
-        rcphi = line['rhocosphi'] * 6378.137 * u.km
-        rsphi = line['rhosinphi'] * 6378.137 * u.km
-        name = line['name']
-        site = EarthLocation.from_geocentric(rcphi * np.cos(lon), 
-                                             rcphi * np.sin(lon), 
-                                             rsphi)
-        observatories[code] = (name, site)
-    return observatories
+    table = result.to_table()
+
+    if len(table) == 0:
+        raise ValueError(f'code {code} could not be located in MPC database')
+
+    line = table[0]
+    lon = line['longitude'] * u.deg
+    rcphi = line['rhocosphi'] * 6378.137 * u.km
+    rsphi = line['rhosinphi'] * 6378.137 * u.km
+    name = line['name']
+    site = EarthLocation.from_geocentric(rcphi * np.cos(lon),
+                                         rcphi * np.sin(lon),
+                                         rsphi)
+    return name, site
