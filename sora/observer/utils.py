@@ -5,6 +5,8 @@ import requests
 
 __all__ = ['search_code_mpc']
 
+_MPC_CODE_CACHE = {}
+
 
 def search_code_mpc(code):
     """Reads the Minor Planet Center (MPC) Observer codes SBN mirror (mpc_sbn).
@@ -19,6 +21,10 @@ def search_code_mpc(code):
     """
     from astropy.coordinates import EarthLocation
     import warnings
+
+    code = str(code).strip()
+    if code in _MPC_CODE_CACHE:
+        return _MPC_CODE_CACHE[code]
     
     url = "https://userquery.linea.org.br/tap"
     session = requests.Session()
@@ -40,4 +46,5 @@ def search_code_mpc(code):
     site = EarthLocation.from_geocentric(rcphi * np.cos(lon),
                                          rcphi * np.sin(lon),
                                          rsphi)
-    return name, site
+    _MPC_CODE_CACHE[code] = (name, site)
+    return _MPC_CODE_CACHE[code]
