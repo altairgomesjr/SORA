@@ -150,8 +150,7 @@ class Observer:
             An Astropy Longitude object with the Sidereal Time.
         """
         # return local or greenwich sidereal time
-        time = input_tests.test_attr(time, Time, 'time')
-        time.location = self.site
+        time = Time(input_tests.test_attr(time, Time, 'time'), location=self.site)
         if mode == 'local':
             return time.sidereal_time('apparent')
         elif mode == 'greenwich':
