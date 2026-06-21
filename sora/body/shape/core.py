@@ -1,5 +1,5 @@
 from functools import lru_cache
-import pkg_resources
+from importlib.resources import as_file, files
 
 import numpy as np
 import astropy.units as u
@@ -271,8 +271,9 @@ class Shape3D(BaseShape):
 class Ellipsoid(Shape3D):
 
     def __init__(self, a, b=None, c=None, texture=None, right_hand=False):
-        obj_file = pkg_resources.resource_filename('sora', 'data/sphere.obj')
-        super().__init__(obj_file=obj_file, texture=texture, right_hand=right_hand)
+        sphere = files('sora').joinpath('data/sphere.obj')
+        with as_file(sphere) as obj_file:
+            super().__init__(obj_file=str(obj_file), texture=texture, right_hand=right_hand)
         self.a = a
         self.b = b or self.a
         self.c = c or self.b
