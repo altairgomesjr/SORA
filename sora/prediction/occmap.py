@@ -746,10 +746,14 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
     # plots the sites
     for site in sites.keys():
         s = EarthLocation.from_geodetic(sites[site][0], sites[site][1], 0.0*u.km)
-        axf.plot(s.lon.deg, s.lat.deg, transform=ccrs.Geodetic(), marker=sites[site][5],
+        site_lon = np.ravel(s.lon.deg)[0]
+        site_lat = np.ravel(s.lat.deg)[0]
+        axf.plot(site_lon, site_lat, transform=ccrs.Geodetic(), marker=sites[site][5],
                  markersize=mapsize[0].value*sscale*10.0/46.0, color=sites[site][4])
         if site_name:
-            xt, yt = latlon2xy(s.lon.deg, s.lat.deg, center_map.lon.value, center_map.lat.value)
+            xt, yt = latlon2xy(site_lon, site_lat, center_map.lon.value, center_map.lat.value)
+            xt = np.ravel(xt)[0]
+            yt = np.ravel(yt)[0]
             axf.text(xt + sites[site][2]*1000, yt+sites[site][3]*1000, site, weight='bold',
                      fontsize=25*nscale, family='monospace', 
                      bbox={'facecolor': 'white', 'alpha': site_box_alpha, 'pad': 2, 'edgecolor':'none'})
