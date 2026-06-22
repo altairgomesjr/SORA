@@ -10,7 +10,7 @@ __all__ = ['van_belle', 'kervella']
 
 @deprecated_alias(log='verbose')  # remove this line for v1.0
 def search_star(**kwargs):
-    """Searches position on VizieR and returns a catalogue.
+    """Searches a star position on VizieR and returns a catalogue result.
 
     Parameters
     ----------
@@ -18,22 +18,24 @@ def search_star(**kwargs):
         Coordinate to perform the search.
 
     code : `str`
-        Gaia Source_id of the star.
+        Gaia source identifier of the star.
 
     columns : `list`
         List of strings with the name of the columns to retrieve.
 
-    radius : `int`, `float`, `astropy.unit.quantity`
+    radius : `int`, `float`, `astropy.units.Quantity`
         Radius to search around coordinates.
 
     catalog : `str`
         VizieR catalogue to search.
 
+    verbose : `bool`
+        If True, prints the catalogue being queried.
 
     Returns
     -------
-    catalogue : `astropy.Table`
-        An astropy Table with the catalogue information.
+    catalogue : `astroquery.utils.commons.TableList`
+        Query result with catalogue information.
     """
     from astroquery.vizier import Vizier
 
@@ -54,7 +56,7 @@ def search_star(**kwargs):
 def van_belle(magB=None, magV=None, magK=None):
     """Determines the diameter of a star in mas using equations from van Belle (1999).
 
-    See: Publi. Astron. Soc. Pacific 111, 1515-1523:.
+    See: Publications of the Astronomical Society of the Pacific, 111, 1515-1523.
 
     Parameters
     ----------
@@ -68,8 +70,13 @@ def van_belle(magB=None, magV=None, magK=None):
         The magnitude K of the star.
 
 
-    Note
-    ----
+    Returns
+    -------
+    diameter : `dict`
+        Angular diameters by stellar type and band.
+
+    Notes
+    -----
     If any of those values is 'None', 'nan' or higher than 49, it is not considered.
     """
     if magB is None or np.isnan(magB) or magB > 49:
@@ -100,24 +107,28 @@ def van_belle(magB=None, magV=None, magK=None):
 
 
 def kervella(magB=None, magV=None, magK=None):
-    """Determines the diameter of a star in mas using equations from Kervella et. al (2004).
+    """Determines the diameter of a star in mas using equations from Kervella et al. (2004).
 
-    See: A&A Vol. 426, No.  1:.
+    See: Astronomy & Astrophysics, 426, 297-307.
 
     Parameters
     ----------
-    magB: `float`, default=None
+    magB : `float`, default=None
         The magnitude B of the star.
 
-    magV: `float`, default=None
+    magV : `float`, default=None
         The magnitude V of the star.
 
-    magK: `float`, default=None
-        The magnitudes K of the star.
+    magK : `float`, default=None
+        The magnitude K of the star.
 
+    Returns
+    -------
+    diameter : `dict`
+        Angular diameters by band.
 
-    Note
-    ----
+    Notes
+    -----
     If any of those values is 'None', 'nan' or higher than 49, it is not considered.
 
     """
@@ -140,33 +151,41 @@ def kervella(magB=None, magV=None, magK=None):
 
 
 def spatial_motion(ra, dec, pmra, pmdec, parallax=0, rad_vel=0,  dt=0, cov_matrix=None):
-    """Applies spatial motion to star coordinate.
+    """Applies spatial motion to a star coordinate.
 
     Parameters
     ----------
-    ra `int`, `float`
+    ra : `int`, `float`, `astropy.units.Quantity`
         Right Ascension of the star at t=0 epoch, in deg.
 
-    dec : `int`, `float`
+    dec : `int`, `float`, `astropy.units.Quantity`
         Declination of the star at t=0 epoch, in deg.
 
-    pmra : `int`, `float`
-        Proper Motion in RA of the star at t=0 epoch, in mas/year.
+    pmra : `int`, `float`, `astropy.units.Quantity`
+        Proper motion in RA*cos(DEC) of the star at t=0 epoch, in mas/year.
 
-    pmdec : `int`, `float`
-        Proper Motion in DEC of the star at t=0 epoch, in mas/year.
+    pmdec : `int`, `float`, `astropy.units.Quantity`
+        Proper motion in DEC of the star at t=0 epoch, in mas/year.
 
-    parallax : `int`, `float`
+    parallax : `int`, `float`, `astropy.units.Quantity`, default=0
         Parallax of the star at t=0 epoch, in mas.
 
-    rad_vel : `int`, `float`
-        Radial Velocity of the star at t=0 epoch, in km/s.
+    rad_vel : `int`, `float`, `astropy.units.Quantity`, default=0
+        Radial velocity of the star at t=0 epoch, in km/s.
 
-    dt : `int`, `float`
+    dt : `int`, `float`, `astropy.units.Quantity`, default=0
         Variation of time from catalogue epoch, in days.
 
-    cov_matrix : `2D-array`
+    cov_matrix : `2D-array`, optional
         6x6 covariance matrix.
+
+    Returns
+    -------
+    coord : `astropy.coordinates.SkyCoord`
+        Star coordinate propagated by spatial motion.
+    errors : `numpy.ndarray`
+        Returned only when ``cov_matrix`` is provided. Propagated coordinate
+        uncertainties.
     """
     import astropy.constants as const
 
@@ -327,6 +346,25 @@ def spatial_motion(ra, dec, pmra, pmdec, parallax=0, rad_vel=0,  dt=0, cov_matri
 
 
 def choice_star(catalogue, coord, columns, source):
+    """Prompts the user to choose one star from a catalogue table.
+
+    Parameters
+    ----------
+    catalogue : `astropy.table.Table`
+        Catalogue table with candidate sources.
+    coord : `astropy.coordinates.SkyCoord`
+        Reference coordinate used to sort sources by distance.
+    columns : `list`
+        Column names to display. The first two columns must contain RA and DEC.
+    source : `str`
+        Source context used to decide how cancellation is handled.
+
+    Returns
+    -------
+    catalogue : `astropy.table.Table`, `None`
+        Table row selected by the user, or None when selection is cancelled for
+        supported contexts.
+    """
     from astropy.table import Table
 
     tstars = SkyCoord(catalogue[columns[0]], catalogue[columns[1]])
@@ -360,30 +398,31 @@ def choice_star(catalogue, coord, columns, source):
 
 
 def edr3ToICRF(pmra, pmdec, ra, dec, G):
-    """ Function that corrects proper motion of Gaia-EDR3 stars brighter than G=13
-    Adapted from Cantat-Gaudin & Brandt, A&A, 2021
+    """Corrects Gaia EDR3 bright-star proper motions to the ICRF frame.
 
-    Parameters:
+    Adapted from Cantat-Gaudin & Brandt, A&A, 2021.
+
+    Parameters
     ----------
-        pmra : `float`, `int`
-            Proper Motion in Right Ascencion, in mas/yr.
+    pmra : `float`, `int`, `astropy.units.Quantity`
+        Proper motion in right ascension, in mas/yr when unitless.
 
-        pmdec : `float`, `int`
-            Proper Motion in Declination, in mas/yr.
+    pmdec : `float`, `int`, `astropy.units.Quantity`
+        Proper motion in declination, in mas/yr when unitless.
 
-        ra : `float`, `int`
-            Right Ascencion, in deg.
+    ra : `float`, `int`, `astropy.units.Quantity`
+        Right ascension, in deg when unitless.
 
-        dec : `float`, `int`
-            Declination, in deg.
+    dec : `float`, `int`, `astropy.units.Quantity`
+        Declination, in deg when unitless.
 
-        G: `float`, `int`
-            Gaia G magnitude.
+    G : `float`, `int`
+        Gaia G magnitude.
 
     Returns
-        -------
-        pmra_icrf, pmdec_icrf : `float`
-            pair of corrected proper motions.
+    -------
+    pmra_icrf, pmdec_icrf : `float`, `astropy.units.Quantity`
+        Pair of corrected proper motions.
     """
     if G >= 13:
         return pmra, pmdec

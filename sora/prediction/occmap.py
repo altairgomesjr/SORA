@@ -15,14 +15,14 @@ __all__ = ['plot_occ_map']
 
 
 def xy2latlon(x, y, loncen, latcen, time):
-    """Calculates the longitude and latitude given projected positions x and y.
+    """Calculates longitude and latitude from projected positions x and y.
 
     Parameters
     ----------
-    x : `int`, `float`
+    x : `int`, `float`, array
         Projected position in x, in the GCRS, in meters.
 
-    y : `int`, `float`
+    y : `int`, `float`, array
         Projected position in y, in the GCRS, in meters.
 
     loncen : `int`, `float`
@@ -30,14 +30,15 @@ def xy2latlon(x, y, loncen, latcen, time):
 
     latcen : `int`, `float`
         Center latitude of projection, in degrees.
+
     time : `astropy.time.Time`
-        Time of referred projection.
+        Time of the projection.
 
     Returns
     -------
-    lon, lat : `list`
-        Longitude and Latitude whose projection at loncen, lat results
-        in x, y. (deg).
+    lon, lat : `numpy.ndarray`
+        Longitude and latitude, in degrees, whose projection at loncen and
+        latcen results in x and y.
     """
     r = const.R_earth.to(u.m).value
     site_cen = EarthLocation(loncen*u.deg, latcen*u.deg)
@@ -83,15 +84,14 @@ def xy2latlon(x, y, loncen, latcen, time):
 
 
 def latlon2xy(lon, lat, loncen, latcen):
-    """Calculates the projection of longitude and latitude in the loncen,
-    latcen direction.
+    """Calculates projected x and y coordinates from longitude and latitude.
 
     Parameters
     ----------
-    lon : `int`, `float`
+    lon : `int`, `float`, array
         Longitude to calculate projection.
 
-    lat : `int`, `float`
+    lat : `int`, `float`, array
         Latitude to calculate projection.
 
     loncen : `int`, `float`
@@ -102,7 +102,7 @@ def latlon2xy(lon, lat, loncen, latcen):
 
     Returns
     -------
-    x, y : `list`
+    x, y : `numpy.ndarray`
         Projection of lon, lat at loncen, latcen, in the ITRS (meters).
     """
     site_cen = EarthLocation(loncen*u.deg, latcen*u.deg)
@@ -158,23 +158,24 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
     longi : `int`, `float`, default=0
         East longitude of sub-planet point, deg, positive towards East.
 
-    nameimg : `str`
-        Change the name of the imaged saved.
+    band : `str`, default='G'
+        Photometric band name used in the map labels.
 
-    path : `str`
+    nameimg : `str`, optional
+        Change the name of the saved image.
+
+    path : `str`, default='.'
         Path to a directory where to save map.
 
     resolution : `int`, default=2
-        Cartopy feature resolution.\n
-        - ``1`` means a resolution of "10m";\n
-        - ``2`` a resolution of "50m";\n
-        - ``3`` a resolution of "100m".
+        Cartopy feature resolution. ``1`` means a resolution of "10m"; ``2``
+        means "50m"; and ``3`` means "100m".
 
     states : `bool`
         If True, plots the states borders of the countries. The states
         of some countries will only be shown depending on the resolution.
 
-    zoom : `int`, `float`
+    zoom : `int`, `float`, default=1
         Zooms in or out of the map.
 
     centermap_geo : `list`, default=None
@@ -182,10 +183,10 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
         a list with two numbers.
 
     centermap_delta : `list`, default=None
-        Displace the center of the map given displacement in X and Y, in km.
+        Displace the center of the map by a displacement in X and Y, in km.
         It must be a list with two numbers.
 
-    centerproj : `list`
+    centerproj : `list`, optional
         Rotates the Earth to show occultation with the center projected at a
         given longitude and latitude. It must be a list with two numbers.
 
@@ -198,33 +199,34 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
     parallels : `int`, default=30
         Plots lines representing the parallels for given interval, in degrees.
 
-    sites : `dict`
+    sites : `dict`, `str`, optional
         Plots site positions in map. It must be a python dictionary where the
-        key is  the `name` of the site, and the value is a list with `longitude`,
-        `latitude`, `delta_x`, `delta_y`, `color` and `marker`. `delta_x` and 
-        `delta_y` are displacement, in km, from the point position of the site 
+        key is the `name` of the site, and the value is a list with `longitude`,
+        `latitude`, `delta_x`, `delta_y`, `color` and `marker`. `delta_x` and
+        `delta_y` are displacement, in km, from the point position of the site
         in the map and the `name`. `color` is the color of the point. `marker` is
-        the symbols used for each stations following matplotlib.pyplot properties. 
+        the symbols used for each station following matplotlib.pyplot properties.
 
     site_name : `bool`
-        If True, it prints the name of the sites given, else it plots only the points.
+        If True, plots the names of the given sites. Otherwise, plots only the
+        points.
 
     site_box_alpha : `int`, `float`, default=0
         Sets the transparency of a box surrounding each station name. 0 equals to
         transparent, and 1 equals to opaque.
 
-    countries : `dict`
+    countries : `dict`, `str`, optional
         Plots the names of countries. It must be a python dictionary where the
         key is the name of the country and the value is a list with longitude
         and latitude of the lower left part of the text.
 
-    offset : `list`
+    offset : `list`, default=[0.0, 0.0]
         Applies an offset to the ephemeris, calculating new CA and instant of
         CA. It is a pair of `delta_RA*cosDEC` and `delta_DEC`.
 
     mapstyle : `int`, default=1
-        Define the color style of the map. ``'1'`` is the default black
-        and white scale. ``'2'`` is a colored map.
+        Define the color style of the map. ``1`` is the default black and
+        white scale. ``2`` is a colored map.
 
     error : `int`, `float`
         Ephemeris error in mas. It plots a dashed line representing radius + error.
@@ -255,7 +257,7 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
     chcolor : `str`, default='grey'
         Color of the line of the chords.
 
-    heights : `list`
+    heights : `list`, optional
         It plots a circular dashed line showing the locations where the observer
         would observe the occultation at a given height above the horizons.
         This must be a list.
@@ -276,7 +278,7 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
         The transparency of the night shade, where 0.0 is full transparency and
         1.0 is full black.
 
-    fmt : `str`, default:'png'
+    fmt : `str`, default='png'
         The format to save the image. It is parsed directly by `matplotlib.pyplot`.
 
     dpi : `int`, default=100
@@ -286,7 +288,7 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
         Changes the color of the line that represents the limits of the shadow
         over Earth.
 
-    outcolor :`str`
+    outcolor : `str`
         Changes the color of the lines that represents the limits of the shadow
         outside Earth.
 
@@ -303,18 +305,15 @@ def plot_occ_map(name, radius, coord, time, ca, pa, vel, dist, mag=0, longi=0, *
         Arbitrary scale for the size of the points that represent the center of
         the shadow.
 
-    arrow : `bool`
+    arrow : `bool`, default=True
         If True, it plots the arrow with the occultation direction.
 
 
-    Important
-    ---------
+    Notes
+    -----
     Required parameters to plot an occultation map: 'name', 'radius', 'coord',
     'time', 'ca', 'pa', 'vel', and 'dist'.
 
-
-    Note
-    ----
     The parameters 'mag' and 'longi' are optional and only printed in label.
     All other remaining parameters can be used to further customize the Map
     configuration.

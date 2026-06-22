@@ -1,17 +1,23 @@
+"""Utility functions for file, Horizons, and SPICE-kernel ephemerides."""
+
 import warnings
 
 __all__ = ['getBSPfromJPL', 'ephem_kernel', 'ephem_horizons']
 
 
 def getBSPfromJPL(identifier, initial_date, final_date, email, directory='./'):
-    """Downloads BSP files from JPL database.
+    """Warns that automatic BSP download from JPL is unavailable.
 
-    BSP files, which have information to generate the ephemeris of the objects,
-    will be downloaded and named as (without spaces): '[identifier].bsp'.
+    This function is kept for compatibility, but currently returns without
+    downloading files because the JPL Query service changed.
+
+    When available, BSP files contain information to generate object
+    ephemerides and are named as (without spaces): ``'[identifier].bsp'``.
 
     Important
     ---------
-    It is not possible to download BSP files for Planets or Satellites.
+    Automatic download is currently not working. It is also not possible to
+    download BSP files for planets or satellites with this helper.
 
     Parameters
     ----------
@@ -40,8 +46,13 @@ def getBSPfromJPL(identifier, initial_date, final_date, email, directory='./'):
 
         Example: ``username@user.domain.name``.
 
-    directory : `str`
+    directory : `str`, optional, default='./'
         Directory path to save the bsp files.
+
+    Returns
+    -------
+    None
+        The function currently only emits a warning and returns.
     """
     warnings.warn("This function is no longer working due to changes in the JPL Query service. Alternatives are being considered.")
     return
@@ -134,13 +145,15 @@ def ephem_kernel(time, target, observer, kernels, output='ephemeris'):
     target : `str`
         IAU (kernel) code of the target.
 
-    observer : `str`
-        IAU (kernel) code of the observer.
+    observer : `str`, `sora.Observer`, `sora.Spacecraft`
+        IAU (kernel) code of the observer, a SORA observer object, a SORA
+        spacecraft object, or one of ``'geocenter'`` and ``'barycenter'``.
+        String IAU codes must be present in the loaded kernels.
 
     kernels : `list`, `str`
         List of paths for all the kernels.
 
-    output : `str`
+    output : `str`, optional, default='ephemeris'
         The output of data. ``ephemeris`` will output the observed position,
         while ``vector`` will output the Cartesian state vector, without
         light time correction.
@@ -148,7 +161,9 @@ def ephem_kernel(time, target, observer, kernels, output='ephemeris'):
     Returns
     -------
     coord : `astropy.coordinates.SkyCoord`
-        ICRS coordinate of the target.
+        ICRS coordinate of the target when ``output='ephemeris'``. Cartesian
+        state vector of the target relative to the observer when
+        ``output='vector'``.
     """
     import numpy as np
     import astropy.units as u
@@ -221,18 +236,18 @@ def ephem_horizons(time, target, observer, id_type='smallbody', output='ephemeri
         in the ISO format (yyyy-mm-dd hh:mm:ss.s) or an astropy Time object.
 
     target : `str`
-        IAU (kernel) code of the target.
+        Target name or identifier accepted by Horizons.
 
-    observer : `str`
-        IAU (kernel) code of the observer.
+    observer : `str`, `sora.Observer`, `sora.Spacecraft`
+        Horizons observer code, a SORA observer object, a SORA spacecraft
+        object, or one of ``'geocenter'`` and ``'barycenter'``.
 
-    id_type : `str`
+    id_type : `str`, optional, default='smallbody'
         Type of target object options: ``smallbody``, ``majorbody`` (planets but
         also anything that is not a small body), ``designation``, ``name``,
-        ``asteroid_name``, ``comet_name``, ``id`` (Horizons id number), or
-        ``smallbody`` (find the closest match under any id_type).
+        ``asteroid_name``, ``comet_name``, or ``id`` (Horizons id number).
 
-    output : `str`
+    output : `str`, optional, default='ephemeris'
         The output of data. ``ephemeris`` will output the observed position,
         while ``vector`` will output the Cartesian state vector, without
         light time correction.
@@ -240,7 +255,8 @@ def ephem_horizons(time, target, observer, id_type='smallbody', output='ephemeri
     Returns
     -------
     coord : `astropy.coordinates.SkyCoord`
-        ICRS coordinate of the target.
+        ICRS coordinate of the target when ``output='ephemeris'``. Cartesian
+        state vector from Horizons when ``output='vector'``.
 
     Notes
     -----

@@ -9,7 +9,12 @@ _MPC_CODE_CACHE = {}
 
 
 def search_code_mpc(code):
-    """Reads the Minor Planet Center (MPC) Observer codes SBN mirror (mpc_sbn).
+    """Queries the Minor Planet Center (MPC) Observer codes SBN mirror.
+
+    Parameters
+    ----------
+    code : `str`, `int`
+        MPC observatory code.
 
     Returns
     -------
@@ -18,6 +23,15 @@ def search_code_mpc(code):
 
     site : `astropy.coordinates.EarthLocation`
         Observatory site as an Astropy EarthLocation object.
+
+    Raises
+    ------
+    ValueError
+        Raised when the MPC code is not found in the database.
+
+    Notes
+    -----
+    Query results are cached in memory by MPC code.
     """
     from astropy.coordinates import EarthLocation
     import warnings
