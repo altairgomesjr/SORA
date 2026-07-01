@@ -170,8 +170,9 @@ def ephem_kernel(time, target, observer, kernels, output='ephemeris'):
     import astropy.constants as const
     import spiceypy as spice
 
-    from astropy.coordinates import SkyCoord
+    from astropy.coordinates import SkyCoord, GCRS
     from astropy.time import Time
+    from astropy.utils.exceptions import AstropyWarning
     from sora.observer import Observer, Spacecraft
 
     origins = {'geocenter': '399', 'barycenter': '0'}
@@ -195,7 +196,15 @@ def ephem_kernel(time, target, observer, kernels, output='ephemeris'):
     delt = 0 * u.s
 
     # calculates vector Solar System Barycenter -> Observer
-    if isinstance(observer, (Observer, Spacecraft)):
+    if isinstance(observer, Observer):
+        position1 = spice.spkpos(location, dt.sec, 'J2000', 'NONE', '0')[0]
+        position1 = SkyCoord(*position1.T * u.km, representation_type='cartesian')
+        itrs = observer.site.get_itrs(obstime=time)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyWarning)
+            gcrs = itrs.transform_to(GCRS(obstime=time))
+        position1 = SkyCoord(position1.cartesian + gcrs.cartesian, representation_type='cartesian')
+    elif isinstance(observer, Spacecraft):
         spice.kclear()  # necessary because observer.get_vector() may load different kernels
         position1 = observer.get_vector(time=time, origin='barycenter')
         for kern in kernels:

@@ -107,8 +107,8 @@ class Observer:
         -------
         ksi, eta : `float`
             On-sky orthographic projection of the observer relative to a star.
-            ``ksi`` is in the North-South direction (North positive).
-            ``eta`` is in the East-West direction (East positive).
+            ``ksi`` is in the East-West direction (East positive).
+            ``eta`` is in the North-South direction (North positive).
         """
         from astropy.coordinates.matrix_utilities import rotation_matrix
 
@@ -201,6 +201,7 @@ class Observer:
             the given time.
         """
         from sora.ephem.utils import ephem_horizons, ephem_kernel
+        from astropy.coordinates import get_body_barycentric
 
         itrs = self.site.get_itrs(obstime=time)
         with warnings.catch_warnings():
@@ -208,7 +209,10 @@ class Observer:
             gcrs = itrs.transform_to(GCRS(obstime=time))
 
         if self.ephem == 'horizons':
-            vector = ephem_horizons(time=time, target=self.spkid, observer=origin, id_type='majorbody', output='vector')
+            if origin == 'barycenter':
+                vector = SkyCoord(get_body_barycentric(body="earth", time=time, ephemeris="de440"))
+            else:
+                vector = ephem_horizons(time=time, target=self.spkid, observer=origin, id_type='majorbody', output='vector')
         else:
             vector = ephem_kernel(time=time, target=self.spkid, observer=origin, kernels=self.ephem, output='vector')
 
