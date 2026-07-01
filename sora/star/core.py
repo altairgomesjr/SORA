@@ -505,9 +505,10 @@ class Star(MetaStar):
 
         Parameters
         ----------
-        time : `str`, `float`, `astropy.time.Time`
+        time : `str`, `float`, `astropy.time.Time`, iterable
             Reference time to apply proper motion and calculate parallax. It can be a string
-            in the ISO format (yyyy-mm-dd hh:mm:ss.s) or an astropy Time object.
+            in the ISO format (yyyy-mm-dd hh:mm:ss.s), an astropy Time object,
+            or a list of values accepted by `astropy.time.Time`.
 
         observer : `str`, `sora.observer.Observer`, `sora.observer.Spacecraft`, default='geocenter'
             Observer used to calculate the star position. It can be ``'geocenter'``
@@ -539,10 +540,6 @@ class Star(MetaStar):
             return SkyCoord(ra=p.ra, dec=p.dec, distance=p.distance)
 
         dt = time - self.epoch
-        if not time.isscalar:
-            if time.max() - time.min() > 1*u.day:
-                raise ValueError('list of times must be in a interval of 1 day to process.')
-            dt = dt[0]
         bar_star = spatial_motion(self.ra, self.dec, self.pmra, self.pmdec, self.parallax, self.rad_vel, dt=dt.jd)
 
         if observer == "barycenter" or self.coord.distance.unit.is_unity() or np.isnan(self.coord.distance):
@@ -563,14 +560,16 @@ class Star(MetaStar):
 
         Parameters
         ----------
-        time : `str`, `astropy.time.Time`
+        time : `str`, `astropy.time.Time`, iterable
             Reference time to propagate the star error. It can be a string
-            in the ISO format (yyyy-mm-dd hh:mm:ss.s) or an astropy Time object.
+            in the ISO format (yyyy-mm-dd hh:mm:ss.s), an astropy Time object,
+            or a list of values accepted by `astropy.time.Time`.
 
         Returns
         -------
         errors : `tuple`
-            Position errors in RA*cos(DEC) and DEC, in mas.
+            Position errors in RA*cos(DEC) and DEC, in mas. For vector times,
+            each element contains the error at the corresponding time.
         """
         try:
             time = Time(time)
@@ -579,7 +578,7 @@ class Star(MetaStar):
         dt = time - self.epoch
         n_coord, errors = spatial_motion(self.ra, self.dec, self.pmra, self.pmdec, self.parallax,
                                          self.rad_vel, dt=dt.jd, cov_matrix=self.cov)
-        return errors[0]*u.mas, errors[1]*u.mas
+        return errors[..., 0]*u.mas, errors[..., 1]*u.mas
 
     def add_offset(self, da_cosdec, ddec):
         """Adds an offset to the star position.
