@@ -38,7 +38,7 @@ class Chord:
         self._observer = observer
         self._lightcurve = lightcurve
         self._isable = {}
-        self._method = 'geocenter'
+        self._method = 'observer'
 
     @property
     def name(self):
@@ -132,8 +132,8 @@ class Chord:
         -------
         f, g, [vf, vg] : `float`, `float`, [`float`, `float`]
             The geocentric on-sky Orthographic projection of the object with `f`
-            pointing to the celestial North and `g` pointing to the celestial
-            East. The respective velocities (vf, vg) are returned if ``vel=True``.
+            pointing to the celestial East and `g` pointing to the celestial
+            North. The respective velocities (vf, vg) are returned if ``vel=True``.
         """
         from sora.observer import Spacecraft
 
@@ -141,7 +141,6 @@ class Chord:
             raise ValueError('{} must be associated to an Occultation to use this function'.format(self.__class__.__name__))
         occtime = self._shared_with['chordlist']['time']
         star = self._shared_with['chordlist']['star']
-        coord = star.get_position(time=occtime, observer='geocenter')
         ephem = self._shared_with['chordlist']['ephem']
 
         ref_times = {'immersion': 'immersion', 'emersion': 'emersion', 'start': 'initial_time', 'end': 'end_time'}
@@ -165,6 +164,7 @@ class Chord:
                           'This position could not have a physical meaning.'.format(tca_diff.max()))
 
         if self._method == 'geocenter' and not isinstance(self.observer, Spacecraft):
+            coord = star.get_position(time=occtime, observer='geocenter')
             ksio1, etao1 = self.observer.get_ksi_eta(time=time, star=coord)
             ksie1, etae1 = ephem.get_ksi_eta(time=time, star=coord)
             f = ksio1 - ksie1
@@ -284,28 +284,49 @@ class Chord:
             raise ValueError("step must be a number or the string 'exposure'")
 
         vals = []
-        for interval in intervals:
-            if exposure:
+        if exposure:
+            exposure_jds = []
+            exposure_scale = None
+            for interval in intervals:
                 tref = self.lightcurve.tref
                 times = tref + self.lightcurve.time*u.s
                 times = times[np.where((times >= interval[0]) & (times <= interval[1]))]
+                if len(times) == 0:
+                    continue
                 time_beg = times - exptime/2.0*u.s
                 time_end = times + exptime/2.0*u.s
-                f1, g1 = self.get_fg(time=time_beg)
-                f2, g2 = self.get_fg(time=time_end)
-                v = np.array([f1, f2, g1, g2])
-                nv = v.T.reshape(2*len(f1), 2)
-                for i in nv:
-                    vals.append(i)
-            else:
+                exposure_scale = exposure_scale or time_beg.scale
+                exposure_jds.append(np.column_stack((time_beg.jd, time_end.jd)).reshape(-1))
+            if len(exposure_jds) > 0:
+                time = Time(np.concatenate(exposure_jds), format='jd', scale=exposure_scale)
+                f, g = self.get_fg(time=time)
+                coords = np.column_stack((np.array(f, ndmin=1), np.array(g, ndmin=1)))
+                for pair in coords.reshape(-1, 2, 2):
+                    vals.append(pair[:, 0])
+                    vals.append(pair[:, 1])
+        else:
+            times = []
+            sizes = []
+            scale = None
+            for interval in intervals:
                 dt = interval[1] - interval[0]
                 n = int(dt.sec/step)+1
                 if n < 2:
                     n = 2
                 time = interval[0] + np.linspace(0, dt.sec, n)*u.s
+                scale = scale or time.scale
+                times.append(time.jd)
+                sizes.append(n)
+            if len(times) > 0:
+                time = Time(np.concatenate(times), format='jd', scale=scale)
                 f, g = self.get_fg(time=time)
-                vals.append(f)
-                vals.append(g)
+                f = np.array(f, ndmin=1)
+                g = np.array(g, ndmin=1)
+                idx = 0
+                for size in sizes:
+                    vals.append(f[idx:idx+size])
+                    vals.append(g[idx:idx+size])
+                    idx += size
 
         return vals
 
@@ -565,18 +586,22 @@ class Chord:
             raise ValueError('{} {} is negative. There is no limb_points'.format(self.__class__.__name__, self.name))
         time = ['immersion', 'emersion']
         names = []
-        val = []
-        err = []
+        val_times = []
+        err_times = []
         for t in time:
             if only_able and not self.is_able[t]:
                 continue
             names.append(f'{self.name}_{t}')
-            val.append(self.get_fg(time=t))
             tt = getattr(self.lightcurve, t)
             tt_err = getattr(self.lightcurve, t + '_err') * u.s
-            err.append(self.get_fg(time=tt+tt_err))
-        xy = np.array(val)
-        xy_err = np.array(err) - xy
+            val_times.append(tt)
+            err_times.append(tt + tt_err)
+        if len(names) == 0:
+            return names, np.array([]), np.array([])
+        f, g = self.get_fg(time=Time(val_times + err_times))
+        fg = np.array([f, g]).T
+        xy = fg[:len(val_times)]
+        xy_err = fg[len(val_times):] - xy
         return names, xy, xy_err
 
     def __repr__(self):

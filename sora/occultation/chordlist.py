@@ -37,7 +37,7 @@ class ChordList(List):
         self._time = time
         self._shared_with = {"chord": {"star": self._star, "ephem": self._body.ephem, "time": self._time},
                              'occultation': {}}
-        self._method_value = 'geocenter'
+        self._method_value = 'observer'
 
     def add_chord(self, *, name=None, chord=None, observer=None, lightcurve=None):
         """Adds a chord to the occultation chord list.
@@ -248,24 +248,37 @@ class ChordList(List):
         """Prints a table with the summary of the chords.
         """
         from astropy.table import Table, vstack
+        from astropy.time import Time
 
         tables = []
         for key in self.keys():
             tt = Table()
-            obs = self[key].observer
-            lc = self[key].lightcurve
+            chord = self[key]
+            obs = chord.observer
+            lc = chord.lightcurve
             max_val = 0
             cols = []
             colnames = ['Name', 'Longitude', 'Latitude', 'status', 'time', 'f', 'g']
-            itens = [key, obs.lon.to_string(), obs.lat.to_string()]
-            row = []
-            times = {'Initial Time': 'initial_time', 'Immersion': 'immersion', 'Emersion': 'emersion', 'End Time': 'end_time'}
-            for i in times:
-                val = getattr(lc, times[i], None)
+            itens = [[key], [obs.lon.to_string()], [obs.lat.to_string()]]
+            labels = []
+            vals = []
+            times = [('Initial Time', 'initial_time'), ('Immersion', 'immersion'),
+                     ('Emersion', 'emersion'), ('End Time', 'end_time')]
+            for label, attr in times:
+                val = getattr(lc, attr, None)
                 if val is not None:
-                    row.append([i, val.iso, *['{:.2f}'.format(n) for n in self[key].get_fg(time=val)]])
-            for t in np.array(row).T:
-                itens.append(t.tolist())
+                    labels.append(label)
+                    vals.append(val)
+            if len(vals) > 0:
+                f, g = chord.get_fg(time=Time(vals))
+                f = np.array(f, ndmin=1)
+                g = np.array(g, ndmin=1)
+                itens += [
+                    labels,
+                    [val.iso for val in vals],
+                    ['{:.2f}'.format(n) for n in f],
+                    ['{:.2f}'.format(n) for n in g],
+                ]
             for item in itens:
                 v = np.array(item, ndmin=1).tolist()
                 cols.append(v)
