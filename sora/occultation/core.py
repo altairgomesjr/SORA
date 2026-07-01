@@ -388,8 +388,9 @@ class Occultation:
         ----------
         time : `str`, `astropy.time.Time`, optional
             Reference time to calculate the position. If not given, it uses the
-            instant of the occultation Closest Approach. It can be a string
-            in the ISO format (yyyy-mm-dd hh:mm:ss.s) or an astropy Time object.
+            instant of the occultation Closest Approach. It must be a scalar
+            instant and can be a string in the ISO format (yyyy-mm-dd hh:mm:ss.s)
+            or an astropy Time object.
 
         offset : `list`, optional
             Offset to apply to the position. If not given, uses the parameters
@@ -438,6 +439,8 @@ class Occultation:
             time = Time(time)
         else:
             time = self.tca
+        if not time.isscalar:
+            raise ValueError('time must be a scalar instant.')
 
         tca_diff = np.absolute(time-self.tca)
         if tca_diff > 1*u.day:
@@ -508,7 +511,7 @@ class Occultation:
         new_pos = SkyCoord(lon=off_ra, lat=off_dec, frame=coord_frame)
         new_pos = new_pos.icrs
 
-        error_star = self.star.error_at(self.tca)
+        error_star = self.star.error_at(time)
         error_ra = np.sqrt(error_star[0]**2 + e_off_ra**2)
         error_dec = np.sqrt(error_star[1]**2 + e_off_dec**2)
 
