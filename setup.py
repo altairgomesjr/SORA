@@ -23,6 +23,7 @@ setup(
         'numpy>=2.2',
         'pyerfa>=2.0',
         'astropy>=7.0',
+        'jplephem>=2.13',
         'astroquery>=0.4.9',
         'spiceypy>=6.0.0',
         'matplotlib>=3.10.0',

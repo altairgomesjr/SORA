@@ -14,6 +14,8 @@ from sora.config.input_tests import SelectDefault
 
 @dataclass
 class Catalogue(metaclass=ABCMeta):
+    """Base class describing the columns and services used by a star catalogue."""
+
     name: str
     cat_path: str
     code: str
@@ -32,39 +34,44 @@ class Catalogue(metaclass=ABCMeta):
 
     @property
     def _catalogue_service(self):
+        """Returns the service used by the catalogue."""
         if hasattr(self, 'tap_url'):
             return 'LIneA TAP'
         return 'VizieR'
 
     @property
     def _catalogue_reference(self):
+        """Returns the catalogue reference in its service."""
         return self.cat_path
 
     @property
     def _catalogue_description(self):
+        """Returns a human-readable catalogue description."""
         return f'{self.name} ({self._catalogue_service}: {self._catalogue_reference})'
 
     @abstractmethod
     def search_star(self):
+        """Searches for one star in the catalogue."""
         pass
 
     @abstractmethod
     def search_region(self, coord, radius=None, width=None, height=None, columns=None, verbose=False,
                       row_limit=10000000, timeout=600, **kwargs):
+        """Searches for stars in a sky region."""
         pass
 
     def parse_catalogue(self, table):
-        """Properly interprets the table
+        """Parses a catalogue table into SORA star parameters.
 
         Parameters
         ----------
         table : `astropy.table.Table`
-            The table with the parameters read from the catalogue server
+            Table with the parameters read from the catalogue server.
 
         Returns
         -------
         cat_info : `dict`
-            Dictionary with the list of parameters
+            Dictionary with catalogue parameters converted to SORA names and units.
         """
         output: dict = {'code': table[self.code].tolist()}
         params = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'rad_vel']
@@ -100,15 +107,18 @@ class Catalogue(metaclass=ABCMeta):
 
     @staticmethod
     def _column_name(column):
+        """Returns a normalized table column name."""
         return column.replace('(', '_').replace(')', '_')
 
     def _as_array(self, table, column):
+        """Returns a table column as a float array with masked values as NaN."""
         values = np.ma.asarray(table[self._column_name(column)])
         if np.ma.isMaskedArray(values):
             values = values.filled(np.nan)
         return np.asarray(values, dtype=float)
 
     def _as_quantity(self, table, column, unit):
+        """Returns a table column as an astropy Quantity."""
         return self._as_array(table, column) * unit
 
     def get_simple_columns(self):
@@ -130,42 +140,41 @@ class Catalogue(metaclass=ABCMeta):
 
 
 class VizierCatalogue(Catalogue):
-    """VizierCatalogue defines the parameters necessary to download all
-    the information of stars from a catalogue on the Vizier webservice.
+    """Defines parameters needed to download star information from VizieR.
 
     Parameters
     ----------
     name : `str`
-        The name of the catalogue which will be referred in other processes
+        Name of the catalogue used by other processes.
     cat_path : `str`
         The path of the catalogue in the Vizier website.
         For instance, for GaiaEDR3, ``cat_path='I/350/gaiaedr3'``
     code : `str`
-        The keyword referring to a unique code within the catalogue
+        Column name for the unique source identifier within the catalogue.
     ra : `str`
-        The keyword referring to the Right Ascension within the catalogue
+        Column name for right ascension within the catalogue.
     dec : `str`
-        The keyword referring to the Declination within the catalogue
+        Column name for declination within the catalogue.
     epoch : `str`, `astropy.time.Time`
         The epoch of the catalogue. If it is defined in the catalogue, just pass
         the keyword within the catalogue. If the epoch is not present in the catalogue
         table, we must pass a Time object directly, for example ``epoch=Time('J2000')``,
         which defines the catalogue coordinates in J2000 TDB.
     pmra : `str`, optional
-        The keyword referring to the Proper Motion in ra*cosdec within the catalogue.
+        Column name for the proper motion in RA*cos(DEC) within the catalogue.
         If not available, set it to None.
     pmdec : `str`, optional
-        The keyword referring to the Proper Motion in dec within the catalogue.
+        Column name for the proper motion in DEC within the catalogue.
         If not available, set it to None.
     parallax : `str`, optional
-        The keyword referring to the Parallax within the catalogue.
+        Column name for parallax within the catalogue.
         If not available, set it to None.
     rad_vel : `str`, optional
-        The keyword referring to the Radial Velocity within the catalogue
-    bands : `dict` [`str`, `str`], optional
+        Column name for radial velocity within the catalogue.
+    band : `dict` [`str`, `str`], optional
         A dictionary where the key is band name and the value is the
         keyword referring to the band within the catalogue.
-        For instance, in Gaia: ``bands={'G': 'Gmag'}``.
+        For instance, in Gaia: ``band={'G': 'Gmag'}``.
         If not available, set it to None.
     errors : `list` [`str`], optional
         A list with the 6 keywords that refer to the uncertainty parameters
@@ -177,7 +186,7 @@ class VizierCatalogue(Catalogue):
     Examples
     --------
 
-    To define the Gaia-EDR3 catalogue with VizierCatalogue, we must define a object like:
+    To define the Gaia-EDR3 catalogue with `VizierCatalogue`, define an object like:
 
     >>> catalogue = VizierCatalogue(name='GaiaEDR3', cat_path='I/350/gaiaedr3', code='Source', ra='RA_ICRS', dec='DE_ICRS',
     >>>                             pmra='pmRA', pmdec='pmDE', epoch='Epoch', parallax='Plx', rad_vel='RVDR2', band={'G': 'Gmag'},
@@ -186,27 +195,27 @@ class VizierCatalogue(Catalogue):
     """
 
     def __init__(self, **kwargs):
-        """"""
+        """Initializes a VizierCatalogue object."""
         super(VizierCatalogue, self).__init__(**kwargs)
 
     def search_star(self, code=None, coord=None, radius=None):
-        """Looks for a specific star in the catalogue
+        """Searches for a specific star in the catalogue.
 
         Parameters
         ----------
         code : `str`
-            The unique id of the star
+            Unique source identifier of the star.
         coord : `str`, `astropy.coordinates.SkyCoord`
-            The target coordinate which to search. It may be specified as a string in which
+            Target coordinate to search. It may be specified as a string, in which
             case it is resolved using online services or as the appropriate astropy SkyCoord object.
             ICRS coordinates may also be entered as a string.
         radius : `number`
-            The radius of the circular region to query.
+            Radius of the circular region to query.
 
         Returns
         -------
-        catalogue : `astropy.table.Table`
-            An astropy Table with all the information about the star
+        catalogue : `astroquery.utils.commons.TableList`
+            Query result with catalogue information about the star.
 
         Raises
         ------
@@ -235,38 +244,38 @@ class VizierCatalogue(Catalogue):
 
     def search_region(self, coord, radius=None, width=None, height=None, columns=None,
                       row_limit=10_000_000, timeout=600, **kwargs):
-        """
+        """Searches the catalogue around a sky position.
 
         Parameters
         ----------
         coord : `str`, `astropy.coordinates.SkyCoord`
-            The target around which to search. It may be specified as a string in which
+            Target around which to search. It may be specified as a string, in which
             case it is resolved using online services or as the appropriate astropy SkyCoord object.
             ICRS coordinates may also be entered as a string.
         radius : `number`
-            The radius of the circular region to query.
+            Radius of the circular region to query.
         width : `number`
-            The width in  of the square region to query.
+            Width of the square or rectangular region to query.
         height : `number`
             When set in addition to ``width``, the queried region becomes
             rectangular, with the specified ``width`` and ``height``.
         columns : `list`
-            List of strings with the keyword to fetch the catalog.
+            List of strings with the keywords to fetch from the catalogue.
             If ``columns=None`` it will download all the columns.
             If ``columns="simple"`` it will download only the columns for
             the code, epoch and astrometric parameters.
-        row_limit : int
+        row_limit : `int`
             Maximum number of rows that will be fetched from the result
-            (set to -1 for unlimited). Default: ``row_limit=10_000_000``
+            (set to -1 for unlimited). Default: ``row_limit=10_000_000``.
         timeout : `number`
-            timeout for connecting to server in seconds. Default: ``timeout=600``
+            Timeout for connecting to server in seconds. Default: ``timeout=600``.
         **kwargs
-            Any other keyword argument will be passed to astroquery.vizier.Vizier
+            Additional keyword arguments passed to `astroquery.vizier.Vizier`.
 
         Returns
         -------
-        catalogue : `astropy.table.Table`
-            An astropy Table with all the information about the star
+        catalogue : `astroquery.utils.commons.TableList`
+            Query result with catalogue information about the stars.
         """
         if columns == 'simple':
             columns = self.get_simple_columns()
@@ -277,28 +286,43 @@ class VizierCatalogue(Catalogue):
         return catalogue
 
     def __repr__(self):
+        """Returns the object representation."""
         return self.__str__()
 
     def __str__(self):
+        """Returns the printable catalogue description."""
         return f'<VizierCatalogue: {self.name} defined in https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source={self.cat_path}>'
 
 
 class LineaGaiaCatalogue(Catalogue):
-    """Gaia catalogue served by LIneA TAP."""
+    """Gaia catalogue served by the LIneA TAP service."""
 
     def __init__(self, tap_url='https://userquery.linea.org.br/tap', language=None, **kwargs):
+        """Initializes a LineaGaiaCatalogue object.
+
+        Parameters
+        ----------
+        tap_url : `str`, optional
+            URL of the TAP service.
+        language : `str`, optional
+            Query language passed to the TAP service.
+        **kwargs
+            Catalogue metadata passed to `Catalogue`.
+        """
         self.tap_url = tap_url
         self.language = language
         super(LineaGaiaCatalogue, self).__init__(**kwargs)
 
     @staticmethod
     def _format_value(value):
+        """Formats a value for use in a TAP query."""
         text = str(value).strip()
         if text.isdigit():
             return text
         return "'{}'".format(text.replace("'", "''"))
 
     def _run_query(self, query):
+        """Runs a TAP query and returns the resulting table."""
         session = requests.Session()
         tap = pyvo.dal.TAPService(self.tap_url, session=session)
         if self.language is None:
@@ -307,9 +331,11 @@ class LineaGaiaCatalogue(Catalogue):
 
     @staticmethod
     def _format_float(value):
+        """Formats a floating-point value for use in ADQL."""
         return f'{float(value):.16f}'
 
     def _format_columns(self, columns):
+        """Formats selected columns for a TAP SELECT clause."""
         if columns == 'simple':
             columns = self.get_simple_columns()
         if columns is None:
@@ -317,6 +343,7 @@ class LineaGaiaCatalogue(Catalogue):
         return ', '.join(dict.fromkeys(columns))
 
     def _format_column_filters(self, column_filters):
+        """Formats column filters for a TAP WHERE clause."""
         if not column_filters:
             return []
         filters = []
@@ -325,6 +352,22 @@ class LineaGaiaCatalogue(Catalogue):
         return filters
 
     def search_star(self, code=None, coord=None, radius=None):
+        """Searches for a specific star in the LIneA Gaia catalogue.
+
+        Parameters
+        ----------
+        code : `str`
+            Unique source identifier of the star.
+        coord : `str`, `astropy.coordinates.SkyCoord`
+            Target coordinate used when searching by sky position.
+        radius : `astropy.units.Quantity`, optional
+            Radius of the circular region to query when ``coord`` is used.
+
+        Returns
+        -------
+        catalogue : `list`
+            Empty list when no source is found, or a list containing one table.
+        """
         if code is not None:
             query = f'SELECT * FROM {self.cat_path} WHERE {self.code} = {self._format_value(code)}'
             catalogue = self._run_query(query)
@@ -338,6 +381,36 @@ class LineaGaiaCatalogue(Catalogue):
 
     def search_region(self, coord, radius=None, width=None, height=None, columns=None,
                       row_limit=10_000_000, timeout=600, column_filters=None, **kwargs):
+        """Searches the LIneA Gaia catalogue around a sky position.
+
+        Parameters
+        ----------
+        coord : `str`, `astropy.coordinates.SkyCoord`
+            Target around which to search.
+        radius : `astropy.units.Quantity`, optional
+            Radius of the circular region to query.
+        width : `astropy.units.Quantity`, optional
+            Width of the rectangular region to query.
+        height : `astropy.units.Quantity`, optional
+            Height of the rectangular region to query. If omitted, ``width`` is
+            used for both dimensions.
+        columns : `list`, `str`, optional
+            Columns to retrieve. Use ``'simple'`` for the minimum SORA columns.
+        row_limit : `int`, optional
+            Maximum number of rows to fetch. Non-positive values remove the
+            ``TOP`` clause.
+        timeout : `number`, optional
+            Accepted for API compatibility with VizieR catalogues.
+        column_filters : `dict`, optional
+            Additional ADQL filter expressions keyed by column name.
+        **kwargs
+            Accepted for API compatibility with VizieR catalogues.
+
+        Returns
+        -------
+        catalogue : `list`
+            Empty list when no source is found, or a list containing one table.
+        """
         del timeout, kwargs
 
         if not isinstance(coord, SkyCoord):
@@ -370,9 +443,11 @@ class LineaGaiaCatalogue(Catalogue):
         return [] if len(catalogue) == 0 else [catalogue]
 
     def __repr__(self):
+        """Returns the object representation."""
         return self.__str__()
 
     def __str__(self):
+        """Returns the printable catalogue description."""
         return f'<LineaGaiaCatalogue: {self.name} defined in {self.tap_url} ({self.cat_path})>'
 
 
@@ -385,7 +460,7 @@ def is_timeout_error(exc):
 
 
 def should_fallback_to_gaiadr3(catalogue, exc):
-    """Returns True when a TapLinea query should fallback to VizieR Gaia DR3."""
+    """Returns True when a LIneA TAP query should fall back to VizieR Gaia DR3."""
     return isinstance(catalogue, LineaGaiaCatalogue) and is_timeout_error(exc)
 
 
