@@ -421,9 +421,11 @@ class BaseBody():
             if config.ephem.planetary_kernel_position == 'first':
                 kernel_names.reverse()
             kernels, spkid = self._resolve_kernel_sequence(kernel_names)
+            self.spkid = spkid
             value = EphemKernel(kernels, spkid=spkid)
         elif isinstance(value, list):
             kernels, spkid = self._resolve_kernel_sequence(value)
+            self.spkid = spkid
             value = EphemKernel(kernels=kernels, spkid=spkid)
         elif type(value) not in allowed_types:
             if isinstance(value, str) and value.lower() == 'horizons':
